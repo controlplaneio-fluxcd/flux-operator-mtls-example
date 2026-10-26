@@ -148,9 +148,11 @@ CI runs the same script on pull requests, pushes to `main` and weekly.
 - **NetworkPolicies.** The Flux `allow-webhooks` policy admits the Receiver
   port and the flux-operator chart admits the Web UI port from all
   namespaces, so Envoy needs no extra policy.
-- **Adopted releases must match the bootstrap.** Release names, namespaces,
-  chart versions and values of the SPIRE HelmReleases must equal the
-  Terraform inputs, otherwise helm-controller installs a second release.
+- **Adopted releases must keep the bootstrap release names and namespaces**,
+  otherwise helm-controller installs a second release. Once Flux adopts the
+  SPIRE and flux-operator releases, the bootstrap skips them: chart versions
+  in `terraform/main.tf` only set the first install, and upgrades come from
+  the HelmRelease semver ranges.
 
 ## License
 

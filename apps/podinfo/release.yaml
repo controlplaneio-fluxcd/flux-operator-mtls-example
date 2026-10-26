@@ -17,6 +17,6 @@ spec:
     spec:
       url: oci://ghcr.io/stefanprodan/charts/podinfo
       ref:
-        tag: "6.16.0"
+        semver: ">=6.16.0 <7.0.0"
   values:
     replicaCount: 1

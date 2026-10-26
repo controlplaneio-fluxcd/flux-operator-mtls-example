@@ -66,11 +66,11 @@ terraform init
 terraform apply \
   -var git_ref=refs/heads/main \
   -var receiver_token="$(openssl rand -hex 16)"
-export KUBECONFIG="$(terraform output -raw kubeconfig_path)"
 ```
 
-Terraform writes the kubeconfig to `terraform/flux-mtls.kubeconfig` and leaves
-`~/.kube/config` alone.
+kind adds the `kind-flux-mtls` context to `~/.kube/config` and makes it the
+current context. `terraform destroy` removes it and leaves no current context
+set; switch back with `kubectl config use-context`.
 
 Open the Web UI through Envoy:
 

@@ -23,7 +23,7 @@ variable "revision" {
 }
 
 variable "debug_on_failure" {
-  description = "Relay the bootstrap Job logs on failure. Needs kubectl with KUBECONFIG set to the kind kubeconfig."
+  description = "Relay the bootstrap Job logs on failure. Needs kubectl with the kind cluster as the current context."
   type        = bool
   default     = false
 }

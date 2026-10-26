@@ -16,7 +16,12 @@ KEEP_CLUSTER="${KEEP_CLUSTER:-false}"
 GIT_REF="${GIT_REF:-refs/heads/$(git -C "${ROOT_DIR}" rev-parse --abbrev-ref HEAD)}"
 RECEIVER_TOKEN="$(openssl rand -hex 16)"
 FLUX_NS="flux-system"
-export KUBECONFIG="${TF_DIR}/${CLUSTER_NAME}.kubeconfig"
+# Terraform writes the kind context to ~/.kube/config. Every kubectl and
+# helm call is pinned to it so the script never touches another cluster.
+export KUBECONFIG="${HOME}/.kube/config"
+KUBE_CONTEXT="kind-${CLUSTER_NAME}"
+kubectl() { command kubectl --context "${KUBE_CONTEXT}" "$@"; }
+helm() { command helm --kube-context "${KUBE_CONTEXT}" "$@"; }
 
 log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 info() { printf '    %s\n' "$*"; }
@@ -105,7 +110,7 @@ cleanup() {
     for pid in "${PIDS[@]}"; do
         kill "${pid}" >/dev/null 2>&1 || true
     done
-    if [[ ${code} -ne 0 && -f "${KUBECONFIG}" ]]; then
+    if [[ ${code} -ne 0 ]] && command kubectl config get-contexts "${KUBE_CONTEXT}" >/dev/null 2>&1; then
         log "FAILURE (exit ${code}), dumping diagnostics"
         kubectl get pods -A -o wide || true
         kubectl -n "${FLUX_NS}" get fluxinstance/flux -o yaml || true

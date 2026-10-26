@@ -1,15 +1,12 @@
-# Replace this file and the provider blocks in main.tf to bootstrap an
-# existing cluster instead.
-
-locals {
-  # A dedicated kubeconfig keeps kind out of ~/.kube/config.
-  kubeconfig_path = abspath("${path.root}/${var.cluster_name}.kubeconfig")
-}
+# Replace this file and the provider blocks below to bootstrap an existing
+# cluster instead.
 
 resource "kind_cluster" "this" {
-  name            = var.cluster_name
-  node_image      = "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5"
-  kubeconfig_path = local.kubeconfig_path
+  name       = var.cluster_name
+  node_image = "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5"
+  # kind adds the kind-<cluster_name> context and makes it current;
+  # terraform destroy removes it.
+  kubeconfig_path = pathexpand("~/.kube/config")
   wait_for_ready  = true
 }
 

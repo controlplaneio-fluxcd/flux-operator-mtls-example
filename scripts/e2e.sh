@@ -186,7 +186,12 @@ ARTIFACT_PATH="$(kubectl -n "${FLUX_NS}" get gitrepository/flux-system -o jsonpa
     | sed -E 's|^https?://[^/]+||')"
 [[ -n "${ARTIFACT_PATH}" ]] || fail "GitRepository has no artifact"
 port_forward "${FLUX_NS}" source-controller 9090 80
-CODE="$(retry_curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:9090${ARTIFACT_PATH}")"
+for _ in $(seq 1 30); do
+    # 000 means the port-forward is not ready yet.
+    CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:9090${ARTIFACT_PATH}" || true)"
+    [[ "${CODE}" != "000" ]] && break
+    sleep 1
+done
 [[ "${CODE}" == "400" ]] || fail "source-controller answered plain HTTP with ${CODE}"
 info "plain HTTP rejected with 400"
 
@@ -219,8 +224,8 @@ grep -q "handling request: ${WEBHOOK_PATH##*/}" <<<"${nc_logs}" \
 info "Envoy reached the Receiver over SPIFFE mTLS"
 
 log "Using the Web UI through Envoy Gateway"
-retry_curl -fsS --max-time 10 "http://127.0.0.1:8080/" | grep -qi "<html" \
-    || fail "Web UI did not return HTML"
+UI_BODY="$(retry_curl -fsS --max-time 10 "http://127.0.0.1:8080/")"
+grep -qi "<html" <<<"${UI_BODY}" || fail "Web UI did not return HTML"
 ARTIFACT_FILE="$(mktemp)"
 retry_curl -fsS --max-time 30 -o "${ARTIFACT_FILE}" \
     "http://127.0.0.1:8080/api/v1/artifact/download?kind=GitRepository&namespace=${FLUX_NS}&name=flux-system"

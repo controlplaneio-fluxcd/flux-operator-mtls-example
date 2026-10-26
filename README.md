@@ -34,13 +34,20 @@ Gateway, the Web UI and workloads, bootstrapped with Terraform and Flux Operator
 | podinfo frontend | `spiffe://example.org/ns/frontend/sa/podinfo` | accepts Envoy only, calls the backend |
 | podinfo backend | `spiffe://example.org/ns/backend/sa/podinfo` | accepts the frontend only |
 
-```text
-client ──HTTP──▶ Envoy ──mTLS──▶ flux-operator :9080 ──mTLS──▶ source-controller
-                   │                                 └─mTLS──▶ notification-controller
-                   └──mTLS──▶ notification-controller :9292 (Receiver)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/terraform-bootstrap-dark.png">
+  <img alt="Bootstrap with Terraform: a bootstrap Job installs SPIRE, Flux Operator and the FluxInstance, then the Flux controllers adopt the SPIRE and Flux Operator releases" src="diagrams/terraform-bootstrap.png">
+</picture>
 
-client ──HTTP──▶ Envoy ──mTLS──▶ frontend podinfo :9899 ──mTLS──▶ backend podinfo :9899
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/mtls-ingress-dark.png">
+  <img alt="Ingress over SPIFFE mTLS: Envoy routes flux.localhost/hook/ to the Receiver, flux.localhost/ to the Web UI and frontend.localhost/ to the frontend podinfo" src="diagrams/mtls-ingress.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/mtls-artifacts-dark.png">
+  <img alt="Artifact delivery over SPIFFE mTLS: source-watcher, kustomize-controller and helm-controller fetch artifacts from source-controller" src="diagrams/mtls-artifacts.png">
+</picture>
 
 ## Layout
 
@@ -59,6 +66,7 @@ apps/
   frontend/                 podinfo exposed at frontend.localhost, calling the backend
   backend/                  podinfo accepting only the frontend
 scripts/e2e.sh              end-to-end test
+diagrams/                   architecture figures: HTML source, light and dark PNG renders
 ```
 
 The SPIRE and flux-operator values files are read by Terraform with `file()`

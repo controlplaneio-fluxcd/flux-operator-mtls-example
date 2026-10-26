@@ -1,12 +1,12 @@
 # flux-operator-mtls-example
 
 Zero-trust GitOps with SPIFFE/SPIRE: mTLS between the Flux controllers, Envoy
-Gateway and the Web UI, bootstrapped with Terraform and Flux Operator.
+Gateway, the Web UI and workloads, bootstrapped with Terraform and Flux Operator.
 
 ## What it does
 
-- SPIRE issues X.509-SVIDs to the Flux controllers, the flux-operator and the
-  Envoy Gateway proxy.
+- SPIRE issues X.509-SVIDs to the Flux controllers, the flux-operator, the
+  Envoy Gateway proxy and the app pods.
 - The [FluxInstance](https://fluxoperator.dev/docs/crd/fluxinstance/) enables
   [SPIFFE mTLS](https://fluxcd.io/flux/integrations/spiffe-mtls/) between the
   controllers (`.spec.spiffe.mtls`, Flux 2.10). Artifact downloads from
@@ -18,18 +18,27 @@ Gateway and the Web UI, bootstrapped with Terraform and Flux Operator.
 - The [flux-operator-bootstrap](https://registry.terraform.io/modules/controlplaneio-fluxcd/flux-operator-bootstrap/kubernetes/latest)
   Terraform module installs SPIRE before the operator, then Flux adopts the
   SPIRE and flux-operator Helm releases.
-- podinfo runs as the app and as the event sink for Flux alerts.
+- An [ArtifactGenerator](https://fluxcd.io/flux/components/source/artifactgenerators/)
+  splits `apps/` into one ExternalArtifact per app, published by source-watcher
+  into a namespace it creates. A ResourceSet discovers the artifacts and
+  reconciles each app with admin rights in its own namespace only.
+- Two podinfo apps, `frontend` and `backend`: the frontend calls the backend
+  over SPIFFE mTLS and the backend accepts only the frontend's SPIFFE ID.
 
 | Workload | SPIFFE ID | mTLS peers |
 |---|---|---|
-| source-, kustomize-, helm-, notification-controller | `spiffe://example.org/ns/flux-system/sa/<controller>` | each other |
+| source-, kustomize-, helm-, notification-controller, source-watcher | `spiffe://example.org/ns/flux-system/sa/<controller>` | each other |
 | flux-operator | `spiffe://example.org/ns/flux-system/sa/flux-operator` | source-controller (Web UI downloads), notification-controller (events) |
 | Envoy proxy | `spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy` | flux-operator Web UI, notification-controller Receiver |
+| podinfo frontend | `spiffe://example.org/ns/frontend/sa/podinfo` | podinfo backend |
+| podinfo backend | `spiffe://example.org/ns/backend/sa/podinfo` | accepts the frontend only |
 
 ```text
 client ──HTTP──▶ Envoy ──mTLS──▶ flux-operator :9080 ──mTLS──▶ source-controller
                    │                                 └─mTLS──▶ notification-controller
                    └──mTLS──▶ notification-controller :9292 (Receiver)
+
+frontend podinfo ──mTLS──▶ backend podinfo :9899
 ```
 
 ## Layout
@@ -37,15 +46,16 @@ client ──HTTP──▶ Envoy ──mTLS──▶ flux-operator :9080 ──m
 ```text
 terraform/                  kind cluster and bootstrap module
 clusters/kind/
-  flux-system/              FluxInstance, flux-operator HelmRelease and values
-  infrastructure.yaml       Kustomizations: spire, event-sink, envoy-gateway, gateway
-  apps.yaml                 Kustomization: podinfo and the Receiver
+  flux-system/              FluxInstance, flux-operator HelmRelease, values and RBAC
+  infrastructure.yaml       ResourceSet: one Kustomization per infrastructure/ component
+  apps.yaml                 ArtifactGenerator, input provider and ResourceSet for apps/
 infrastructure/
   spire/                    SPIRE HelmReleases and values (shared with Terraform)
-  event-sink/               podinfo event sink, Provider and Alert
   envoy-gateway/            Envoy Gateway HelmRelease
-  gateway/                  EnvoyProxy, Gateway, HTTPRoutes, BackendTLSPolicies
-apps/                       podinfo HelmRelease and the Receiver
+  gateway/                  EnvoyProxy, Gateway, HTTPRoutes, BackendTLSPolicies, Receiver
+apps/
+  frontend/                 podinfo calling the backend over SPIFFE mTLS
+  backend/                  podinfo accepting only the frontend
 scripts/e2e.sh              end-to-end test
 ```
 
@@ -87,12 +97,6 @@ WEBHOOK_PATH=$(kubectl -n flux-system get receiver/flux-system -o jsonpath='{.st
 curl -X POST -H 'Content-Type: application/json' -d '{}' "http://localhost:8080${WEBHOOK_PATH}"
 ```
 
-Watch the events reach the sink:
-
-```shell
-kubectl -n event-sink logs deploy/event-sink -f | jq -R 'fromjson? | select(.msg == "payload received") | .payload'
-```
-
 Delete the cluster with `terraform destroy` (pass the same variables).
 
 To bootstrap an existing cluster instead, delete `terraform/kind.tf` and
@@ -110,15 +114,19 @@ syncs the current branch, which must be pushed; set `GIT_REF` to override and
 
 - The FluxInstance is Ready and reports mTLS enabled; all Kustomizations and
   HelmReleases are Ready.
-- The SPIRE ClusterSPIFFEIDs select the Flux and Envoy pods.
+- The SPIRE ClusterSPIFFEIDs select the Flux, Envoy and app pods.
 - helm-controller owns the SPIRE and flux-operator releases, and a second
   bootstrap run does not upgrade them.
-- source-controller answers plain HTTP with 400.
+- The ArtifactGenerator manages the app namespaces and their ExternalArtifacts
+  are Ready; the frontend ServiceAccount can manage its own namespace and
+  nothing else.
+- source-controller and source-watcher answer plain HTTP with 400.
 - The Web UI and the Receiver reject TLS clients without an SVID.
 - A Receiver call through Envoy reaches notification-controller.
-- The Web UI loads through Envoy, an artifact download returns a valid
-  tar.gz, and its audit event reaches the sink.
-- The sink receives events from source-, kustomize- and helm-controller.
+- The Web UI loads through Envoy and an artifact download returns a valid
+  tar.gz.
+- The frontend gets the backend echo over SPIFFE mTLS, the backend logs the
+  frontend's SPIFFE ID and rejects clients without an SVID.
 
 CI runs the same script on pull requests, pushes to `main` and weekly.
 
@@ -143,11 +151,24 @@ CI runs the same script on pull requests, pushes to `main` and weekly.
   `http://`; the controllers switch to `https` when mTLS is enabled.
 - **Flux >= 2.10.** The operator rejects `.spec.spiffe` on older versions. An
   existing 2.9 instance can be upgraded and switched to mTLS in one commit.
-- **The last hop to the event sink is plain HTTP.** mTLS from
-  notification-controller to Provider endpoints arrives in Flux 2.11.
+- **Alerts leave the mTLS boundary.** notification-controller calls Provider
+  endpoints without SPIFFE mTLS; support arrives in Flux 2.11.
 - **NetworkPolicies.** The Flux `allow-webhooks` policy admits the Receiver
   port and the flux-operator chart admits the Web UI port from all
   namespaces, so Envoy needs no extra policy.
+- **Multi-tenancy lockdown is on.** Flux impersonates `<namespace>/default`
+  for objects without a `serviceAccountName`, so every Kustomization and
+  HelmRelease sets one. Infrastructure runs as `flux-operator` in
+  `flux-system` and as `flux` in the component namespaces, bound to
+  `cluster-admin`. Apps run as `flux` in their own namespace, bound to the
+  namespaced `admin` role. Cross-namespace source references are disabled, so
+  the ArtifactGenerator publishes each app's ExternalArtifact into the app
+  namespace instead of the apps referencing the flux-system GitRepository.
+- **source-watcher needs namespace RBAC.** The ArtifactGenerator authorizes
+  namespace management against its ServiceAccount, but source-watcher creates
+  and deletes the namespaces with its own credentials, and Flux grants it only
+  read access to namespaces
+  (`clusters/kind/flux-system/source-watcher-rbac.yaml`).
 - **Adopted releases must keep the bootstrap release names and namespaces**,
   otherwise helm-controller installs a second release. Once Flux adopts the
   SPIRE and flux-operator releases, the bootstrap skips them: chart versions

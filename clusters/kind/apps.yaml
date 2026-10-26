@@ -1,17 +1,99 @@
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
+# Every directory under apps/ becomes an app with its own namespace, an
+# ExternalArtifact published by source-watcher from the flux-system
+# GitRepository, and a Kustomization that runs with admin rights in that
+# namespace only.
+apiVersion: source.extensions.fluxcd.io/v1beta1
+kind: ArtifactGenerator
 metadata:
   name: apps
   namespace: flux-system
 spec:
+  # Publishing to other namespaces and managing them is authorized against
+  # this ServiceAccount.
+  serviceAccountName: flux-operator
+  commonMetadata:
+    labels:
+      app.kubernetes.io/part-of: apps
+  sources:
+    - alias: repo
+      kind: GitRepository
+      name: flux-system
+  pathPattern: "@repo/apps/{app}"
+  managedNamespaces:
+    allowedNames:
+      - "ns in ['frontend', 'backend']"
+    prune: true
+  artifacts:
+    - name: "{app}"
+      namespace: "{app}"
+      copy:
+        - from: "@repo/apps/{app}/**"
+          to: "@artifact/"
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  serviceAccountName: flux-operator
+  type: ExternalArtifact
+  selectors:
+    - namespace: "*"
+      matchLabels:
+        app.kubernetes.io/part-of: apps
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  serviceAccountName: flux-operator
   dependsOn:
-    - name: gateway
-  interval: 1h
-  retryInterval: 2m
-  timeout: 5m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./apps
-  prune: true
-  wait: true
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSet
+      name: infrastructure
+      namespace: flux-system
+      ready: true
+  inputsFrom:
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: apps
+  resourcesTemplate: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: flux
+      namespace: << inputs.namespace >>
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: flux
+      namespace: << inputs.namespace >>
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: admin
+    subjects:
+      - kind: ServiceAccount
+        name: flux
+        namespace: << inputs.namespace >>
+    ---
+    apiVersion: kustomize.toolkit.fluxcd.io/v1
+    kind: Kustomization
+    metadata:
+      name: << inputs.name >>
+      namespace: << inputs.namespace >>
+    spec:
+      serviceAccountName: flux
+      interval: 1h
+      retryInterval: 2m
+      timeout: 5m
+      sourceRef:
+        kind: ExternalArtifact
+        name: << inputs.name >>
+      path: ./
+      prune: true
+      wait: true

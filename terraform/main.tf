@@ -13,7 +13,11 @@ module "flux_operator_bootstrap" {
     # CSI socket and needs its SVID to build a FluxInstance with mTLS.
     prerequisites = {
       yamls = [
-        file("${path.root}/../infrastructure/spire/namespace.yaml"),
+        yamlencode({
+          apiVersion = "v1"
+          kind       = "Namespace"
+          metadata   = { name = "spire-system" }
+        }),
       ]
       charts = [
         {

@@ -4,6 +4,7 @@ resources:
   - flux-instance.yaml
   - flux-operator.yaml
   - web-admin.yaml
+  - source-watcher-rbac.yaml
 configMapGenerator:
   - name: flux-operator-values
     namespace: flux-system

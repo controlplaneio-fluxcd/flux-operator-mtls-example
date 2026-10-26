@@ -15,9 +15,11 @@ spec:
     - kustomize-controller
     - helm-controller
     - notification-controller
+    - source-watcher
   cluster:
     type: kubernetes
     size: medium
+    multitenant: true
     networkPolicy: true
     domain: "cluster.local"
   spiffe:

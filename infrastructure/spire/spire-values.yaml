@@ -23,6 +23,11 @@ spire-server:
           namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: flux-system
+        apps:
+          spiffeIDTemplate: "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
+          namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: apps
         envoy-gateway-proxy:
           spiffeIDTemplate: "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
           namespaceSelector:

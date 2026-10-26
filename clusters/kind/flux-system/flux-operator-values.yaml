@@ -1,4 +1,6 @@
 # Shared by the Terraform bootstrap and the flux-operator HelmRelease.
+multitenancy:
+  enabled: true
 spiffe:
   workloadAPI:
     endpoint: "unix:///spiffe-workload-api/spire-agent.sock"
@@ -15,6 +17,3 @@ web:
         username: demo
         groups:
           - flux-admin
-    userActions:
-      audit:
-        - download

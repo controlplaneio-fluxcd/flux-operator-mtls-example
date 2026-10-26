@@ -9,6 +9,7 @@ metadata:
 spec:
   interval: 1h
   releaseName: spire-crds
+  serviceAccountName: flux
   chart:
     kind: OCIRepository
     spec:
@@ -25,6 +26,7 @@ spec:
   interval: 1h
   timeout: 10m
   releaseName: spire
+  serviceAccountName: flux
   dependsOn:
     - name: spire-crds
   chart:

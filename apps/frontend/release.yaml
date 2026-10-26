@@ -1,0 +1,29 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: podinfo
+  namespace: frontend
+spec:
+  interval: 1h
+  releaseName: podinfo
+  serviceAccountName: flux
+  chart:
+    kind: OCIRepository
+    spec:
+      url: oci://ghcr.io/stefanprodan/charts/podinfo
+      ref:
+        semver: ">=6.17.0 <7.0.0"
+  values:
+    serviceAccount:
+      enabled: true
+      name: podinfo
+    tls:
+      enabled: true
+    spiffe:
+      enabled: true
+      # /echo calls the backend with the frontend SVID.
+      backendMTLS: true
+      backendIDs:
+        - spiffe://example.org/ns/backend/sa/podinfo
+    backends:
+      - https://podinfo.backend.svc.cluster.local:9899/echo

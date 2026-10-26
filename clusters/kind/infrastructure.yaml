@@ -1,70 +1,69 @@
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
 metadata:
-  name: spire
+  name: infrastructure
   namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileTimeout: "15m"
 spec:
-  interval: 1h
-  retryInterval: 2m
-  timeout: 10m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./infrastructure/spire
-  prune: true
+  serviceAccountName: flux-operator
   wait: true
----
-# Deployed before the rest of the infrastructure so the sink receives the
-# events of their first reconciliation.
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: event-sink
-  namespace: flux-system
-spec:
-  interval: 1h
-  retryInterval: 2m
-  timeout: 5m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./infrastructure/event-sink
-  prune: true
-  wait: true
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: envoy-gateway
-  namespace: flux-system
-spec:
-  dependsOn:
-    - name: spire
-    - name: event-sink
-  interval: 1h
-  retryInterval: 2m
-  timeout: 10m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./infrastructure/envoy-gateway
-  prune: true
-  wait: true
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: gateway
-  namespace: flux-system
-spec:
-  dependsOn:
-    - name: envoy-gateway
-  interval: 1h
-  retryInterval: 2m
-  timeout: 10m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./infrastructure/gateway
-  prune: true
-  wait: true
+  inputs:
+    - component: spire
+      namespace: spire-system
+    - component: envoy-gateway
+      namespace: envoy-gateway-system
+      dependsOn: [spire]
+    - component: gateway
+      dependsOn: [envoy-gateway]
+  resourcesTemplate: |
+    <<- if hasKey inputs "namespace" >>
+    # With multi-tenancy lockdown, the HelmReleases in the component
+    # namespace run as this ServiceAccount.
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: << inputs.namespace >>
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: flux
+      namespace: << inputs.namespace >>
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: flux-<< inputs.namespace >>
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: cluster-admin
+    subjects:
+      - kind: ServiceAccount
+        name: flux
+        namespace: << inputs.namespace >>
+    ---
+    <<- end >>
+    apiVersion: kustomize.toolkit.fluxcd.io/v1
+    kind: Kustomization
+    metadata:
+      name: << inputs.component >>
+      namespace: flux-system
+    spec:
+      <<- if hasKey inputs "dependsOn" >>
+      dependsOn:
+      <<- range $dep := inputs.dependsOn >>
+        - name: << $dep >>
+      <<- end >>
+      <<- end >>
+      serviceAccountName: flux-operator
+      interval: 1h
+      retryInterval: 2m
+      timeout: 10m
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+      path: ./infrastructure/<< inputs.component >>
+      prune: true
+      wait: true

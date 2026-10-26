@@ -58,21 +58,6 @@ retry_curl() {
     return "${rc}"
 }
 
-# events prints the Flux events received by the sink, one JSON object per line.
-events() {
-    kubectl -n event-sink logs deploy/event-sink --tail=-1 2>/dev/null \
-        | jq -cR 'fromjson? | select(.msg == "payload received") | .payload' 2>/dev/null || true
-}
-
-# wait_event <jq condition> <failure message>
-wait_event() {
-    for _ in $(seq 1 60); do
-        events | jq -e "select($1)" >/dev/null && return 0
-        sleep 2
-    done
-    fail "$2"
-}
-
 # expect_tls_rejection <url> <server name> fails unless a TLS client without
 # an SVID is rejected.
 expect_tls_rejection() {
@@ -100,6 +85,23 @@ wait_spiffeid() {
     fail "ClusterSPIFFEID $1 selected no pods"
 }
 
+# expect_plain_http_rejection <namespace> <service> <local port> <source> <source namespace>
+# fails unless the artifact server answers a plain HTTP GET of the source
+# artifact with 400.
+expect_plain_http_rejection() {
+    local path code
+    path="$(kubectl -n "$5" get "$4" -o jsonpath='{.status.artifact.url}' | sed -E 's|^https?://[^/]+||')"
+    [[ -n "${path}" ]] || fail "$4 has no artifact"
+    port_forward "$1" "$2" "$3" 80
+    for _ in $(seq 1 30); do
+        # 000 means the port-forward is not ready yet.
+        code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$3${path}" || true)"
+        [[ "${code}" != "000" ]] && break
+        sleep 1
+    done
+    [[ "${code}" == "400" ]] || fail "$2 answered plain HTTP with ${code}"
+}
+
 # helm_revision <namespace> <release>
 helm_revision() {
     helm -n "$1" history "$2" -o json | jq -r 'max_by(.revision).revision'
@@ -124,7 +126,6 @@ cleanup() {
         done
         kubectl -n envoy-gateway-system logs deploy/envoy-gateway --tail=80 || true
         kubectl -n envoy-gateway-system logs -l gateway.envoyproxy.io/owning-gateway-name=flux --tail=80 || true
-        kubectl -n event-sink logs deploy/event-sink --tail=80 || true
     fi
     if [[ "${KEEP_CLUSTER}" != "true" ]]; then
         log "Destroying the cluster"
@@ -160,19 +161,22 @@ kubectl -n "${FLUX_NS}" wait fluxinstance/flux --for=condition=Ready --timeout=5
 info "Flux controllers run with SPIFFE mTLS"
 
 log "Waiting for the Flux Kustomizations"
-for ks in flux-system spire event-sink envoy-gateway gateway apps; do
+for ks in "${FLUX_NS}/flux-system" "${FLUX_NS}/spire" "${FLUX_NS}/envoy-gateway" "${FLUX_NS}/gateway" frontend/frontend backend/backend; do
+    ns="${ks%%/*}"
+    name="${ks#*/}"
     for _ in $(seq 1 60); do
-        kubectl -n "${FLUX_NS}" get "kustomization/${ks}" >/dev/null 2>&1 && break
+        kubectl -n "${ns}" get "kustomization/${name}" >/dev/null 2>&1 && break
         sleep 5
     done
-    kubectl -n "${FLUX_NS}" wait "kustomization/${ks}" --for=condition=Ready --timeout=15m
+    kubectl -n "${ns}" wait "kustomization/${name}" --for=condition=Ready --timeout=15m
 done
 kubectl wait helmreleases --all -A --for=condition=Ready --timeout=5m
 
 log "Checking SPIFFE identities"
 wait_spiffeid spire-system-spire-flux-system
 wait_spiffeid spire-system-spire-envoy-gateway-proxy
-info "ClusterSPIFFEIDs select the Flux and Envoy pods"
+wait_spiffeid spire-system-spire-apps
+info "ClusterSPIFFEIDs select the Flux, Envoy and app pods"
 
 log "Checking that Flux adopted the bootstrap releases"
 for obj in "spire-system statefulset/spire-server" "${FLUX_NS} deployment/flux-operator"; do
@@ -186,19 +190,26 @@ SPIRE_REV="$(helm_revision spire-system spire)"
 OPERATOR_REV="$(helm_revision "${FLUX_NS}" flux-operator)"
 info "spire and flux-operator releases are managed by helm-controller"
 
-log "Checking that source-controller rejects plain HTTP"
-ARTIFACT_PATH="$(kubectl -n "${FLUX_NS}" get gitrepository/flux-system -o jsonpath='{.status.artifact.url}' \
-    | sed -E 's|^https?://[^/]+||')"
-[[ -n "${ARTIFACT_PATH}" ]] || fail "GitRepository has no artifact"
-port_forward "${FLUX_NS}" source-controller 9090 80
-for _ in $(seq 1 30); do
-    # 000 means the port-forward is not ready yet.
-    CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:9090${ARTIFACT_PATH}" || true)"
-    [[ "${CODE}" != "000" ]] && break
-    sleep 1
+log "Checking the app namespaces"
+for app in frontend backend; do
+    [[ -n "$(kubectl get namespace "${app}" -o jsonpath='{.metadata.labels.source\.extensions\.fluxcd\.io/generator}')" ]] \
+        || fail "namespace ${app} is not managed by the ArtifactGenerator"
+    kubectl -n "${app}" wait "externalartifact/${app}" --for=condition=Ready --timeout=2m
 done
-[[ "${CODE}" == "400" ]] || fail "source-controller answered plain HTTP with ${CODE}"
-info "plain HTTP rejected with 400"
+APP_SA="system:serviceaccount:frontend:flux"
+[[ "$(kubectl auth can-i create deployments -n frontend --as="${APP_SA}")" == "yes" ]] \
+    || fail "the frontend ServiceAccount cannot manage its own namespace"
+for check in "create deployments -n backend" "create deployments -n default" "create clusterrolebindings" "get secrets -n flux-system"; do
+    # shellcheck disable=SC2086
+    [[ "$(kubectl auth can-i ${check} --as="${APP_SA}" || true)" == "no" ]] \
+        || fail "the frontend ServiceAccount can ${check}"
+done
+info "apps get a managed namespace, an ExternalArtifact and admin rights in that namespace only"
+
+log "Checking that the artifact servers reject plain HTTP"
+expect_plain_http_rejection "${FLUX_NS}" source-controller 9090 gitrepository/flux-system "${FLUX_NS}"
+expect_plain_http_rejection "${FLUX_NS}" source-watcher 9091 externalartifact/frontend frontend
+info "source-controller and source-watcher reject plain HTTP with 400"
 
 log "Checking that the Web UI and the Receiver reject clients without an SVID"
 port_forward "${FLUX_NS}" flux-operator 9443 9080
@@ -238,13 +249,16 @@ tar -tzf "${ARTIFACT_FILE}" >/dev/null || fail "downloaded artifact is not a tar
 rm -f "${ARTIFACT_FILE}"
 info "Envoy reached the Web UI and the operator fetched the artifact over SPIFFE mTLS"
 
-log "Checking events received by the sink"
-wait_event '.reportingController == "flux-operator" and .involvedObject.kind == "GitRepository" and .involvedObject.name == "flux-system" and .reason == "WebAction"' \
-    "the Web UI download audit event did not reach the sink"
-for controller in source-controller kustomize-controller helm-controller; do
-    wait_event ".reportingController == \"${controller}\"" "no events from ${controller}"
-done
-info "events from the controllers and the operator reached notification-controller"
+log "Calling the backend from the frontend over SPIFFE mTLS"
+port_forward frontend podinfo 9898 9898
+ECHO="$(retry_curl -fsS --max-time 10 -X POST -d 'mtls-e2e' "http://127.0.0.1:9898/echo")"
+grep -q "mtls-e2e" <<<"${ECHO}" || fail "the frontend did not get the backend echo: ${ECHO}"
+BACKEND_LOGS="$(kubectl -n backend logs deploy/podinfo --tail=-1)"
+jq -eR 'fromjson? | select(.msg == "request started" and .uri == "/echo" and .spiffe_id == "spiffe://example.org/ns/frontend/sa/podinfo")' \
+    <<<"${BACKEND_LOGS}" >/dev/null || fail "the backend did not log the frontend SPIFFE ID"
+port_forward backend podinfo 9445 9899
+expect_tls_rejection "https://127.0.0.1:9445/" "backend"
+info "the frontend called the backend with its SVID; the backend rejects clients without one"
 
 log "Re-running the bootstrap"
 tf apply -auto-approve -var revision=2 >/dev/null

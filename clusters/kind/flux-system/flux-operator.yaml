@@ -8,6 +8,7 @@ metadata:
 spec:
   interval: 1h
   releaseName: flux-operator
+  serviceAccountName: flux-operator
   chart:
     kind: OCIRepository
     spec:

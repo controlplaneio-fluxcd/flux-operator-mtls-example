@@ -1,0 +1,44 @@
+# The controllers and the operator send events to notification-controller
+# over SPIFFE mTLS. The last hop to the sink is plain HTTP: mTLS to Provider
+# endpoints needs Flux 2.11.
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Provider
+metadata:
+  name: event-sink
+  namespace: flux-system
+spec:
+  type: generic
+  address: http://event-sink.event-sink.svc.cluster.local/api/echo
+---
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Alert
+metadata:
+  name: event-sink
+  namespace: flux-system
+spec:
+  providerRef:
+    name: event-sink
+  eventSeverity: info
+  eventSources:
+    - kind: FluxInstance
+      name: "*"
+    - kind: GitRepository
+      name: "*"
+    - kind: OCIRepository
+      name: "*"
+    - kind: Kustomization
+      name: "*"
+    - kind: HelmRelease
+      name: "*"
+    - kind: OCIRepository
+      name: "*"
+      namespace: spire-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: spire-system
+    - kind: OCIRepository
+      name: "*"
+      namespace: envoy-gateway-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: envoy-gateway-system

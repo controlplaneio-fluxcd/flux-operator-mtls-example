@@ -39,7 +39,7 @@ client ──HTTP──▶ Envoy ──mTLS──▶ flux-operator :9080 ──m
                    │                                 └─mTLS──▶ notification-controller
                    └──mTLS──▶ notification-controller :9292 (Receiver)
 
-client ──HTTP──▶ Envoy :8080 ──mTLS──▶ frontend podinfo :9899 ──mTLS──▶ backend podinfo :9899
+client ──HTTP──▶ Envoy ──mTLS──▶ frontend podinfo :9899 ──mTLS──▶ backend podinfo :9899
 ```
 
 ## Layout
@@ -56,7 +56,7 @@ infrastructure/
   gateway/                  EnvoyProxy, Gateway, HTTPRoutes, BackendTLSPolicies, Receiver,
                             Gateway API rights for the app ServiceAccounts
 apps/
-  frontend/                 podinfo exposed on the Gateway apps listener, calling the backend
+  frontend/                 podinfo exposed at frontend.localhost, calling the backend
   backend/                  podinfo accepting only the frontend
 scripts/e2e.sh              end-to-end test
 ```
@@ -84,29 +84,24 @@ kind adds the `kind-flux-mtls` context to `~/.kube/config` and makes it the
 current context. `terraform destroy` removes it and leaves no current context
 set; switch back with `kubectl config use-context`.
 
-Open the Web UI through Envoy:
+Forward the Envoy Gateway port:
 
 ```shell
-kubectl -n envoy-gateway-system port-forward svc/flux-gateway 8080:80
+kubectl -n envoy-gateway-system port-forward svc/envoy 8080:80
 ```
 
-Then browse to <http://localhost:8080> for the Web UI.
+The Gateway routes by hostname. Names under `.localhost` resolve to the
+loopback address without DNS or `/etc/hosts` entries.
 
-Open the frontend app, attached by its own HTTPRoute to the Gateway `apps`
-listener:
-
-```shell
-kubectl -n envoy-gateway-system port-forward svc/flux-gateway 8081:8080
-```
-
-Then browse to <http://localhost:8081>. Its `/echo` endpoint calls the backend
-over SPIFFE mTLS.
+- Flux Web UI: <http://flux.localhost:8080>
+- frontend app: <http://frontend.localhost:8080>. Its `/echo` endpoint calls the
+  backend over SPIFFE mTLS.
 
 Call the Receiver through Envoy:
 
 ```shell
 WEBHOOK_PATH=$(kubectl -n flux-system get receiver/flux-system -o jsonpath='{.status.webhookPath}')
-curl -X POST -H 'Content-Type: application/json' -d '{}' "http://localhost:8080${WEBHOOK_PATH}"
+curl -X POST -H 'Content-Type: application/json' -d '{}' "http://flux.localhost:8080${WEBHOOK_PATH}"
 ```
 
 Delete the cluster with `terraform destroy` (pass the same variables).
@@ -178,8 +173,10 @@ CI runs the same script on pull requests, pushes to `main` and weekly.
   namespaced `admin` role. Cross-namespace source references are disabled, so
   the ArtifactGenerator publishes each app's ExternalArtifact into the app
   namespace instead of the apps referencing the flux-system GitRepository.
-- **Apps expose themselves on the Gateway.** The `apps` listener accepts
-  HTTPRoutes only from namespaces labelled `app.kubernetes.io/part-of: apps`.
+- **Apps expose themselves on the Gateway.** The `apps` listener
+  (`*.localhost`) accepts HTTPRoutes only from namespaces labelled
+  `app.kubernetes.io/part-of: apps`; the `flux` listener (`flux.localhost`)
+  only from `flux-system`, and its exact hostname wins over the wildcard.
   Gateway API does not aggregate its RBAC into the `admin` role, so
   `infrastructure/gateway/tenant-rbac.yaml` does it for HTTPRoutes and
   BackendTLSPolicies. A BackendTLSPolicy can only reference a CA Secret in its

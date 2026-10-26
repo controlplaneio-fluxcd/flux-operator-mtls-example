@@ -29,7 +29,7 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        name: flux-gateway
+        name: envoy
         type: ClusterIP
       envoyDeployment:
         patch:
@@ -63,7 +63,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: envoy-spiffe
+  name: envoy
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
   parametersRef:

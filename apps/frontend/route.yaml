@@ -7,9 +7,11 @@ metadata:
   namespace: frontend
 spec:
   parentRefs:
-    - name: flux
-      namespace: flux-system
+    - name: envoy
+      namespace: envoy-gateway-system
       sectionName: apps
+  hostnames:
+    - frontend.localhost
   rules:
     - backendRefs:
         - name: podinfo

@@ -40,7 +40,8 @@ tf() {
 PIDS=()
 # port_forward <namespace> <service> <local port> <remote port>
 port_forward() {
-    kubectl -n "$1" port-forward "service/$2" "$3:$4" >/dev/null 2>&1 &
+    # Call the binary, not the kubectl function, so $! is the kubectl PID.
+    command kubectl --context "${KUBE_CONTEXT}" -n "$1" port-forward "service/$2" "$3:$4" >/dev/null 2>&1 &
     PIDS+=("$!")
 }
 
@@ -118,14 +119,14 @@ cleanup() {
         kubectl -n "${FLUX_NS}" get fluxinstance/flux -o yaml || true
         kubectl get kustomizations,helmreleases,ocirepositories,gitrepositories -A || true
         kubectl get clusterspiffeids -o yaml || true
-        kubectl -n "${FLUX_NS}" get gateway,httproute,backendtlspolicy -o yaml || true
+        kubectl get gateway,httproute,backendtlspolicy -A -o yaml || true
         kubectl get events -A --sort-by=.lastTimestamp | tail -50 || true
         for dep in flux-operator source-controller kustomize-controller helm-controller notification-controller; do
             echo "--- ${dep} ---"
             kubectl -n "${FLUX_NS}" logs "deploy/${dep}" --tail=80 || true
         done
         kubectl -n envoy-gateway-system logs deploy/envoy-gateway --tail=80 || true
-        kubectl -n envoy-gateway-system logs -l gateway.envoyproxy.io/owning-gateway-name=flux --tail=80 || true
+        kubectl -n envoy-gateway-system logs -l gateway.envoyproxy.io/owning-gateway-name=envoy --tail=80 || true
     fi
     if [[ "${KEEP_CLUSTER}" != "true" ]]; then
         log "Destroying the cluster"
@@ -222,16 +223,16 @@ info "TLS clients without an SVID rejected"
 
 log "Calling the Receiver through Envoy Gateway"
 for _ in $(seq 1 60); do
-    kubectl -n envoy-gateway-system get service/flux-gateway >/dev/null 2>&1 && break
+    kubectl -n envoy-gateway-system get service/envoy >/dev/null 2>&1 && break
     sleep 2
 done
 kubectl -n envoy-gateway-system rollout status deployment \
-    -l gateway.envoyproxy.io/owning-gateway-name=flux --timeout=5m
-port_forward envoy-gateway-system flux-gateway 8080 80
+    -l gateway.envoyproxy.io/owning-gateway-name=envoy --timeout=5m
+port_forward envoy-gateway-system envoy 8080 80
 kubectl -n "${FLUX_NS}" wait receiver/flux-system --for=condition=Ready --timeout=2m
 WEBHOOK_PATH="$(kubectl -n "${FLUX_NS}" get receiver/flux-system -o jsonpath='{.status.webhookPath}')"
 retry_curl -fsS --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' \
-    "http://127.0.0.1:8080${WEBHOOK_PATH}" >/dev/null
+    "http://flux.localhost:8080${WEBHOOK_PATH}" >/dev/null
 for _ in $(seq 1 30); do
     nc_logs="$(kubectl -n "${FLUX_NS}" logs deploy/notification-controller --tail=-1 2>/dev/null || true)"
     grep -q "handling request: ${WEBHOOK_PATH##*/}" <<<"${nc_logs}" && break
@@ -242,20 +243,19 @@ grep -q "handling request: ${WEBHOOK_PATH##*/}" <<<"${nc_logs}" \
 info "Envoy reached the Receiver over SPIFFE mTLS"
 
 log "Using the Web UI through Envoy Gateway"
-UI_BODY="$(retry_curl -fsS --max-time 10 "http://127.0.0.1:8080/")"
+UI_BODY="$(retry_curl -fsS --max-time 10 "http://flux.localhost:8080/")"
 grep -qi "<html" <<<"${UI_BODY}" || fail "Web UI did not return HTML"
 ARTIFACT_FILE="$(mktemp)"
 retry_curl -fsS --max-time 30 -o "${ARTIFACT_FILE}" \
-    "http://127.0.0.1:8080/api/v1/artifact/download?kind=GitRepository&namespace=${FLUX_NS}&name=flux-system"
+    "http://flux.localhost:8080/api/v1/artifact/download?kind=GitRepository&namespace=${FLUX_NS}&name=flux-system"
 tar -tzf "${ARTIFACT_FILE}" >/dev/null || fail "downloaded artifact is not a tar.gz"
 rm -f "${ARTIFACT_FILE}"
 info "Envoy reached the Web UI and the operator fetched the artifact over SPIFFE mTLS"
 
 log "Using the frontend UI through Envoy Gateway"
-port_forward envoy-gateway-system flux-gateway 8081 8080
 # Envoy answers 404/503 until it has programmed the route.
 for _ in $(seq 1 30); do
-    INFO="$(curl -fsS --max-time 10 "http://127.0.0.1:8081/api/info" 2>/dev/null || true)"
+    INFO="$(curl -fsS --max-time 10 "http://frontend.localhost:8080/api/info" 2>/dev/null || true)"
     [[ -n "${INFO}" ]] && break
     sleep 2
 done

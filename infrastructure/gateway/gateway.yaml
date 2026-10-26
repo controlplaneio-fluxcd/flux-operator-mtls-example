@@ -12,20 +12,27 @@ stringData:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: flux
-  namespace: flux-system
+  name: envoy
+  namespace: envoy-gateway-system
 spec:
-  gatewayClassName: envoy-spiffe
+  gatewayClassName: envoy
+  # *.localhost resolves to loopback without DNS, so a single port-forward
+  # serves every hostname. The exact flux hostname takes precedence over the
+  # apps wildcard, so apps cannot claim it.
   listeners:
-    - name: http
+    - name: flux
+      hostname: flux.localhost
       port: 80
       protocol: HTTP
       allowedRoutes:
         namespaces:
-          from: Same
-    # Apps attach their own routes to this listener.
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: flux-system
     - name: apps
-      port: 8080
+      hostname: "*.localhost"
+      port: 80
       protocol: HTTP
       allowedRoutes:
         namespaces:
@@ -41,7 +48,9 @@ metadata:
   namespace: flux-system
 spec:
   parentRefs:
-    - name: flux
+    - name: envoy
+      namespace: envoy-gateway-system
+      sectionName: flux
   rules:
     - matches:
         - path:
@@ -58,7 +67,9 @@ metadata:
   namespace: flux-system
 spec:
   parentRefs:
-    - name: flux
+    - name: envoy
+      namespace: envoy-gateway-system
+      sectionName: flux
   rules:
     - matches:
         - path:

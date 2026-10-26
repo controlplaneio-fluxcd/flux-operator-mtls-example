@@ -17,6 +17,7 @@ spec:
     - notification-controller
   cluster:
     type: kubernetes
+    size: medium
     networkPolicy: true
     domain: "cluster.local"
   spiffe:

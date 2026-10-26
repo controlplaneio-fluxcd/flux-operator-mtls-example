@@ -85,6 +85,17 @@ spec:
         - kind: ServiceAccount
           name: flux
           namespace: << inputs.namespace >>
+    # Trust bundle for BackendTLSPolicies, which can only reference
+    # Secrets in their own namespace.
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: spiffe-root-ca-sds
+        namespace: << inputs.namespace >>
+      type: gateway.envoyproxy.io/sds
+      stringData:
+        url: "unix:///spiffe-workload-api/spire-agent.sock"
+        secretName: "ROOTCA"
     - apiVersion: kustomize.toolkit.fluxcd.io/v1
       kind: Kustomization
       metadata:

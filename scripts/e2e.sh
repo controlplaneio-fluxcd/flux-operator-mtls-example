@@ -251,6 +251,19 @@ tar -tzf "${ARTIFACT_FILE}" >/dev/null || fail "downloaded artifact is not a tar
 rm -f "${ARTIFACT_FILE}"
 info "Envoy reached the Web UI and the operator fetched the artifact over SPIFFE mTLS"
 
+log "Using the frontend UI through Envoy Gateway"
+port_forward envoy-gateway-system flux-gateway 8081 8080
+# Envoy answers 404/503 until it has programmed the route.
+for _ in $(seq 1 30); do
+    INFO="$(curl -fsS --max-time 10 "http://127.0.0.1:8081/api/info" 2>/dev/null || true)"
+    [[ -n "${INFO}" ]] && break
+    sleep 2
+done
+jq -e '.message | contains("podinfo")' <<<"${INFO}" >/dev/null || fail "the frontend UI is not served through Envoy: ${INFO}"
+port_forward frontend podinfo 9446 9899
+expect_tls_rejection "https://127.0.0.1:9446/" "frontend"
+info "Envoy reached the frontend over SPIFFE mTLS; the frontend rejects clients without an SVID"
+
 log "Calling the backend from the frontend over SPIFFE mTLS"
 port_forward frontend podinfo 9898 9898
 ECHO="$(retry_curl -fsS --max-time 10 -X POST -d 'mtls-e2e' "http://127.0.0.1:9898/echo")"

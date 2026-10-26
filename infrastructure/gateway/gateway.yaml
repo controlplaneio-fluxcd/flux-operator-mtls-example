@@ -23,6 +23,16 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
+    # Apps attach their own routes to this listener.
+    - name: apps
+      port: 8080
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              app.kubernetes.io/part-of: apps
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

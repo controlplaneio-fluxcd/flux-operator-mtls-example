@@ -30,8 +30,8 @@ Gateway, the Web UI and workloads, bootstrapped with Terraform and Flux Operator
 |---|---|---|
 | source-, kustomize-, helm-, notification-controller, source-watcher | `spiffe://example.org/ns/flux-system/sa/<controller>` | each other |
 | flux-operator | `spiffe://example.org/ns/flux-system/sa/flux-operator` | source-controller (Web UI downloads), notification-controller (events) |
-| Envoy proxy | `spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy` | flux-operator Web UI, notification-controller Receiver |
-| podinfo frontend | `spiffe://example.org/ns/frontend/sa/podinfo` | podinfo backend |
+| Envoy proxy | `spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy` | flux-operator Web UI, notification-controller Receiver, podinfo frontend |
+| podinfo frontend | `spiffe://example.org/ns/frontend/sa/podinfo` | accepts Envoy only, calls the backend |
 | podinfo backend | `spiffe://example.org/ns/backend/sa/podinfo` | accepts the frontend only |
 
 ```text
@@ -39,7 +39,7 @@ client ──HTTP──▶ Envoy ──mTLS──▶ flux-operator :9080 ──m
                    │                                 └─mTLS──▶ notification-controller
                    └──mTLS──▶ notification-controller :9292 (Receiver)
 
-frontend podinfo ──mTLS──▶ backend podinfo :9899
+client ──HTTP──▶ Envoy :8080 ──mTLS──▶ frontend podinfo :9899 ──mTLS──▶ backend podinfo :9899
 ```
 
 ## Layout
@@ -53,9 +53,10 @@ clusters/kind/
 infrastructure/
   spire/                    SPIRE HelmReleases and values (shared with Terraform)
   envoy-gateway/            Envoy Gateway HelmRelease
-  gateway/                  EnvoyProxy, Gateway, HTTPRoutes, BackendTLSPolicies, Receiver
+  gateway/                  EnvoyProxy, Gateway, HTTPRoutes, BackendTLSPolicies, Receiver,
+                            Gateway API rights for the app ServiceAccounts
 apps/
-  frontend/                 podinfo calling the backend over SPIFFE mTLS
+  frontend/                 podinfo exposed on the Gateway apps listener, calling the backend
   backend/                  podinfo accepting only the frontend
 scripts/e2e.sh              end-to-end test
 ```
@@ -89,7 +90,17 @@ Open the Web UI through Envoy:
 kubectl -n envoy-gateway-system port-forward svc/flux-gateway 8080:80
 ```
 
-Then browse to <http://localhost:8080>.
+Then browse to <http://localhost:8080> for the Web UI.
+
+Open the frontend app, attached by its own HTTPRoute to the Gateway `apps`
+listener:
+
+```shell
+kubectl -n envoy-gateway-system port-forward svc/flux-gateway 8081:8080
+```
+
+Then browse to <http://localhost:8081>. Its `/echo` endpoint calls the backend
+over SPIFFE mTLS.
 
 Call the Receiver through Envoy:
 
@@ -126,6 +137,8 @@ syncs the current branch, which must be pushed; set `GIT_REF` to override and
 - A Receiver call through Envoy reaches notification-controller.
 - The Web UI loads through Envoy and an artifact download returns a valid
   tar.gz.
+- The frontend UI is served through the Gateway apps listener over SPIFFE
+  mTLS, and the frontend rejects clients without an SVID.
 - The frontend gets the backend echo over SPIFFE mTLS, the backend logs the
   frontend's SPIFFE ID and rejects clients without an SVID.
 
@@ -165,6 +178,13 @@ CI runs the same script on pull requests, pushes to `main` and weekly.
   namespaced `admin` role. Cross-namespace source references are disabled, so
   the ArtifactGenerator publishes each app's ExternalArtifact into the app
   namespace instead of the apps referencing the flux-system GitRepository.
+- **Apps expose themselves on the Gateway.** The `apps` listener accepts
+  HTTPRoutes only from namespaces labelled `app.kubernetes.io/part-of: apps`.
+  Gateway API does not aggregate its RBAC into the `admin` role, so
+  `infrastructure/gateway/tenant-rbac.yaml` does it for HTTPRoutes and
+  BackendTLSPolicies. A BackendTLSPolicy can only reference a CA Secret in its
+  own namespace, so the apps ResourceSet puts the SPIRE trust bundle SDS Secret
+  in every app namespace.
 - **source-watcher needs namespace RBAC.** The ArtifactGenerator authorizes
   namespace management against its ServiceAccount, but source-watcher creates
   and deletes the namespaces with its own credentials, and Flux grants it only

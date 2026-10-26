@@ -34,6 +34,9 @@ spec:
       enabled: true
     spiffe:
       enabled: true
+      # Only Envoy may call the HTTPS port.
+      authorizedIDs:
+        - spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy
       # /echo calls the backend with the frontend SVID.
       backendMTLS: true
       backendIDs:

@@ -1,0 +1,49 @@
+apiVersion: fluxcd.controlplane.io/v1
+kind: FluxInstance
+metadata:
+  name: flux
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "1h"
+    fluxcd.controlplane.io/reconcileTimeout: "5m"
+spec:
+  distribution:
+    version: "2.10.0"
+    registry: "ghcr.io/fluxcd"
+  components:
+    - source-controller
+    - kustomize-controller
+    - helm-controller
+    - notification-controller
+  cluster:
+    type: kubernetes
+    networkPolicy: true
+    domain: "cluster.local"
+  spiffe:
+    workloadAPI:
+      endpoint: "unix:///spiffe-workload-api/spire-agent.sock"
+      csiDriver: "csi.spiffe.io"
+    mtls:
+      enabled: true
+      componentIDTemplate: "spiffe://example.org/ns/flux-system/sa/{component}"
+      receivers:
+        - "spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy"
+  sync:
+    kind: GitRepository
+    url: "https://github.com/controlplaneio-fluxcd/flux-operator-mtls-example.git"
+    ref: "${git_ref}"
+    path: "clusters/kind"
+  kustomize:
+    patches:
+      # After Flux adopts this FluxInstance, git_ref comes from the
+      # ConfigMap that the Terraform bootstrap keeps in sync.
+      - target:
+          kind: Kustomization
+          name: flux-system
+        patch: |
+          - op: add
+            path: /spec/postBuild
+            value:
+              substituteFrom:
+                - kind: ConfigMap
+                  name: flux-runtime-info

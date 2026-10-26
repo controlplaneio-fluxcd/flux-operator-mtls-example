@@ -1,0 +1,41 @@
+# Shared by the Terraform bootstrap and the spire HelmRelease.
+global:
+  spire:
+    trustDomain: example.org
+    namespaces:
+      # The namespace is created by the bootstrap and owned by Flux.
+      create: false
+spire-server:
+  controllerManager:
+    enabled: true
+    identities:
+      clusterSPIFFEIDs:
+        default:
+          enabled: false
+        oidc-discovery-provider:
+          enabled: false
+        test-keys:
+          enabled: false
+        # The chart sets spec.className; the controller manager ignores
+        # ClusterSPIFFEIDs without it.
+        flux-system:
+          spiffeIDTemplate: "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
+          namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: flux-system
+        envoy-gateway-proxy:
+          spiffeIDTemplate: "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
+          namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+          podSelector:
+            matchLabels:
+              spiffe.io/identity: "true"
+spire-agent:
+  sds:
+    # Envoy fetches its SVID and the trust bundle over SDS.
+    enabled: true
+spiffe-csi-driver:
+  enabled: true
+spiffe-oidc-discovery-provider:
+  enabled: false

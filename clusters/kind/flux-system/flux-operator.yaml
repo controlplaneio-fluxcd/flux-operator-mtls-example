@@ -1,0 +1,31 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: flux-operator
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
+  ref:
+    tag: "0.62.0"
+  layerSelector:
+    mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+    operation: copy
+---
+# Adopts the release installed by the Terraform bootstrap. Until Flux owns
+# it, every bootstrap run upgrades the operator.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flux-operator
+  namespace: flux-system
+spec:
+  interval: 1h
+  releaseName: flux-operator
+  chartRef:
+    kind: OCIRepository
+    name: flux-operator
+  valuesFrom:
+    - kind: ConfigMap
+      name: flux-operator-values
+      valuesKey: values.yaml

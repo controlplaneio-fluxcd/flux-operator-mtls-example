@@ -1,0 +1,60 @@
+# Adopts the releases installed by the Terraform bootstrap. Release names,
+# namespace, chart versions and values must match the bootstrap install.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: spire-crds
+  namespace: spire-system
+spec:
+  interval: 1h
+  url: oci://ghcr.io/spiffe/helm-charts/spire-crds
+  ref:
+    tag: "0.6.1"
+  layerSelector:
+    mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+    operation: copy
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: spire-crds
+  namespace: spire-system
+spec:
+  interval: 1h
+  releaseName: spire-crds
+  chartRef:
+    kind: OCIRepository
+    name: spire-crds
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: spire
+  namespace: spire-system
+spec:
+  interval: 1h
+  url: oci://ghcr.io/spiffe/helm-charts/spire
+  ref:
+    tag: "0.30.4"
+  layerSelector:
+    mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+    operation: copy
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: spire
+  namespace: spire-system
+spec:
+  interval: 1h
+  timeout: 10m
+  releaseName: spire
+  dependsOn:
+    - name: spire-crds
+  chartRef:
+    kind: OCIRepository
+    name: spire
+  valuesFrom:
+    - kind: ConfigMap
+      name: spire-values
+      valuesKey: values.yaml

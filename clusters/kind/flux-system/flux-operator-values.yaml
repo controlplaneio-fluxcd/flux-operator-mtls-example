@@ -1,0 +1,20 @@
+# Shared by the Terraform bootstrap and the flux-operator HelmRelease.
+spiffe:
+  workloadAPI:
+    endpoint: "unix:///spiffe-workload-api/spire-agent.sock"
+    csiDriver: "csi.spiffe.io"
+web:
+  # Port 9080 accepts only SPIFFE mTLS from Envoy.
+  authorizedClientSPIFFEIDs:
+    - "spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy"
+  config:
+    # Demo only: every visitor is cluster-admin (see web-admin.yaml).
+    authentication:
+      type: Anonymous
+      anonymous:
+        username: demo
+        groups:
+          - flux-admin
+    userActions:
+      audit:
+        - download

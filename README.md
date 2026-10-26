@@ -1,2 +1,157 @@
 # flux-operator-mtls-example
-Zero-trust GitOps with SPIFFE/SPIRE: mTLS between the Flux controllers, Envoy Gateway and the Web UI, bootstrapped with Terraform and Flux Operator
+
+Zero-trust GitOps with SPIFFE/SPIRE: mTLS between the Flux controllers, Envoy
+Gateway and the Web UI, bootstrapped with Terraform and Flux Operator.
+
+## What it does
+
+- SPIRE issues X.509-SVIDs to the Flux controllers, the flux-operator and the
+  Envoy Gateway proxy.
+- The [FluxInstance](https://fluxoperator.dev/docs/crd/fluxinstance/) enables
+  [SPIFFE mTLS](https://fluxcd.io/flux/integrations/spiffe-mtls/) between the
+  controllers (`.spec.spiffe.mtls`, Flux 2.10). Artifact downloads from
+  source-controller and events sent to notification-controller require a
+  client SVID with an authorized SPIFFE ID.
+- Envoy Gateway exposes the Flux Web UI and the notification-controller
+  [webhook Receiver](https://fluxcd.io/flux/components/notification/receivers/).
+  It calls both backends with its own SVID and verifies their SPIFFE IDs.
+- The [flux-operator-bootstrap](https://registry.terraform.io/modules/controlplaneio-fluxcd/flux-operator-bootstrap/kubernetes/latest)
+  Terraform module installs SPIRE before the operator, then Flux adopts the
+  SPIRE and flux-operator Helm releases.
+- podinfo runs as the app and as the event sink for Flux alerts.
+
+| Workload | SPIFFE ID | mTLS peers |
+|---|---|---|
+| source-, kustomize-, helm-, notification-controller | `spiffe://example.org/ns/flux-system/sa/<controller>` | each other |
+| flux-operator | `spiffe://example.org/ns/flux-system/sa/flux-operator` | source-controller (Web UI downloads), notification-controller (events) |
+| Envoy proxy | `spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy` | flux-operator Web UI, notification-controller Receiver |
+
+```text
+client ──HTTP──▶ Envoy ──mTLS──▶ flux-operator :9080 ──mTLS──▶ source-controller
+                   │                                 └─mTLS──▶ notification-controller
+                   └──mTLS──▶ notification-controller :9292 (Receiver)
+```
+
+## Layout
+
+```text
+terraform/                  kind cluster and bootstrap module
+clusters/kind/
+  flux-system/              FluxInstance, flux-operator HelmRelease and values
+  infrastructure.yaml       Kustomizations: spire, event-sink, envoy-gateway, gateway
+  apps.yaml                 Kustomization: podinfo and the Receiver
+infrastructure/
+  spire/                    SPIRE HelmReleases and values (shared with Terraform)
+  event-sink/               podinfo event sink, Provider and Alert
+  envoy-gateway/            Envoy Gateway HelmRelease
+  gateway/                  EnvoyProxy, Gateway, HTTPRoutes, BackendTLSPolicies
+apps/                       podinfo HelmRelease and the Receiver
+scripts/e2e.sh              end-to-end test
+```
+
+The SPIRE and flux-operator values files are read by Terraform with `file()`
+and by the HelmReleases through generated ConfigMaps, so the bootstrap install
+and the Flux-managed release stay identical.
+
+## Run it on kind
+
+Requirements: Terraform >= 1.11, Docker, kubectl.
+
+Flux syncs this repository from GitHub. To test changes, push them to a branch
+and pass its ref.
+
+```shell
+cd terraform
+terraform init
+terraform apply \
+  -var git_ref=refs/heads/main \
+  -var receiver_token="$(openssl rand -hex 16)"
+export KUBECONFIG="$(terraform output -raw kubeconfig_path)"
+```
+
+Terraform writes the kubeconfig to `terraform/flux-mtls.kubeconfig` and leaves
+`~/.kube/config` alone.
+
+Open the Web UI through Envoy:
+
+```shell
+kubectl -n envoy-gateway-system port-forward svc/flux-gateway 8080:80
+```
+
+Then browse to <http://localhost:8080>.
+
+Call the Receiver through Envoy:
+
+```shell
+WEBHOOK_PATH=$(kubectl -n flux-system get receiver/flux-system -o jsonpath='{.status.webhookPath}')
+curl -X POST -H 'Content-Type: application/json' -d '{}' "http://localhost:8080${WEBHOOK_PATH}"
+```
+
+Watch the events reach the sink:
+
+```shell
+kubectl -n event-sink logs deploy/event-sink -f | jq -R 'fromjson? | select(.msg == "payload received") | .payload'
+```
+
+Delete the cluster with `terraform destroy` (pass the same variables).
+
+To bootstrap an existing cluster instead, delete `terraform/kind.tf` and
+configure the `helm` and `kubernetes` providers for your cluster.
+
+## End-to-end test
+
+```shell
+./scripts/e2e.sh
+```
+
+The script creates the cluster, runs the checks below and destroys it. It
+syncs the current branch, which must be pushed; set `GIT_REF` to override and
+`KEEP_CLUSTER=true` to keep the cluster.
+
+- The FluxInstance is Ready and reports mTLS enabled; all Kustomizations and
+  HelmReleases are Ready.
+- The SPIRE ClusterSPIFFEIDs select the Flux and Envoy pods.
+- helm-controller owns the SPIRE and flux-operator releases, and a second
+  bootstrap run does not upgrade them.
+- source-controller answers plain HTTP with 400.
+- The Web UI and the Receiver reject TLS clients without an SVID.
+- A Receiver call through Envoy reaches notification-controller.
+- The Web UI loads through Envoy, an artifact download returns a valid
+  tar.gz, and its audit event reaches the sink.
+- The sink receives events from source-, kustomize- and helm-controller.
+
+CI runs the same script on pull requests, pushes to `main` and weekly.
+
+## Gotchas
+
+- **The Web UI is open.** It uses anonymous authentication and the anonymous
+  group is bound to `cluster-admin`
+  (`clusters/kind/flux-system/web-admin.yaml`). Anyone who reaches the UI has
+  full control of the cluster. Configure
+  [user management](https://fluxoperator.dev/docs/web-ui/user-management/)
+  before using this outside a throwaway cluster.
+- **No public TLS.** The Gateway listens on plain HTTP and is only reachable
+  through a port-forward. Terminate TLS with your own certificate before
+  exposing it.
+- **SPIRE must run before the operator.** The operator pod mounts the SPIFFE
+  CSI socket and needs its SVID to install controllers with mTLS. That is why
+  SPIRE is a bootstrap prerequisite rather than a Flux-only install.
+- **ClusterSPIFFEIDs need `spec.className`.** The SPIRE controller manager
+  ignores entries without the chart's class (`spire-system-spire`). The
+  identities are defined in the SPIRE chart values, which set it.
+- **Artifact URLs keep `http://`.** `.status.artifact.url` still shows
+  `http://`; the controllers switch to `https` when mTLS is enabled.
+- **Flux >= 2.10.** The operator rejects `.spec.spiffe` on older versions. An
+  existing 2.9 instance can be upgraded and switched to mTLS in one commit.
+- **The last hop to the event sink is plain HTTP.** mTLS from
+  notification-controller to Provider endpoints arrives in Flux 2.11.
+- **NetworkPolicies.** The Flux `allow-webhooks` policy admits the Receiver
+  port and the flux-operator chart admits the Web UI port from all
+  namespaces, so Envoy needs no extra policy.
+- **Adopted releases must match the bootstrap.** Release names, namespaces,
+  chart versions and values of the SPIRE HelmReleases must equal the
+  Terraform inputs, otherwise helm-controller installs a second release.
+
+## License
+
+[AGPL-3.0](LICENSE)

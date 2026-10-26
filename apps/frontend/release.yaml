@@ -14,6 +14,19 @@ spec:
       ref:
         semver: ">=6.17.0 <7.0.0"
   values:
+    # Pod Security "restricted"; the image declares its user by name, so
+    # runAsNonRoot needs the numeric UID.
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 100
+      runAsGroup: 101
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
     serviceAccount:
       enabled: true
       name: podinfo

@@ -20,8 +20,9 @@ Gateway, the Web UI and workloads, bootstrapped with Terraform and Flux Operator
   SPIRE and flux-operator Helm releases.
 - An [ArtifactGenerator](https://fluxcd.io/flux/components/source/artifactgenerators/)
   splits `apps/` into one ExternalArtifact per app, published by source-watcher
-  into a namespace it creates. A ResourceSet discovers the artifacts and
-  reconciles each app with admin rights in its own namespace only.
+  into a namespace it creates with the `restricted` Pod Security Standard
+  enforced. A ResourceSet discovers the artifacts and reconciles each app with
+  admin rights in its own namespace only.
 - Two podinfo apps, `frontend` and `backend`: the frontend calls the backend
   over SPIFFE mTLS and the backend accepts only the frontend's SPIFFE ID.
 
@@ -117,9 +118,9 @@ syncs the current branch, which must be pushed; set `GIT_REF` to override and
 - The SPIRE ClusterSPIFFEIDs select the Flux, Envoy and app pods.
 - helm-controller owns the SPIRE and flux-operator releases, and a second
   bootstrap run does not upgrade them.
-- The ArtifactGenerator manages the app namespaces and their ExternalArtifacts
-  are Ready; the frontend ServiceAccount can manage its own namespace and
-  nothing else.
+- The ArtifactGenerator manages the app namespaces, which enforce the
+  `restricted` Pod Security Standard, and their ExternalArtifacts are Ready.
+- The frontend ServiceAccount can manage its own namespace and nothing else.
 - source-controller and source-watcher answer plain HTTP with 400.
 - The Web UI and the Receiver reject TLS clients without an SVID.
 - A Receiver call through Envoy reaches notification-controller.

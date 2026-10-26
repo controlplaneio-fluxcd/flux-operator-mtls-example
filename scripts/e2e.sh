@@ -194,6 +194,8 @@ log "Checking the app namespaces"
 for app in frontend backend; do
     [[ -n "$(kubectl get namespace "${app}" -o jsonpath='{.metadata.labels.source\.extensions\.fluxcd\.io/generator}')" ]] \
         || fail "namespace ${app} is not managed by the ArtifactGenerator"
+    [[ "$(kubectl get namespace "${app}" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')" == "restricted" ]] \
+        || fail "namespace ${app} does not enforce the restricted Pod Security Standard"
     kubectl -n "${app}" wait "externalartifact/${app}" --for=condition=Ready --timeout=2m
 done
 APP_SA="system:serviceaccount:frontend:flux"
@@ -204,7 +206,7 @@ for check in "create deployments -n backend" "create deployments -n default" "cr
     [[ "$(kubectl auth can-i ${check} --as="${APP_SA}" || true)" == "no" ]] \
         || fail "the frontend ServiceAccount can ${check}"
 done
-info "apps get a managed namespace, an ExternalArtifact and admin rights in that namespace only"
+info "apps get a restricted managed namespace, an ExternalArtifact and admin rights in that namespace only"
 
 log "Checking that the artifact servers reject plain HTTP"
 expect_plain_http_rejection "${FLUX_NS}" source-controller 9090 gitrepository/flux-system "${FLUX_NS}"

@@ -36,17 +36,17 @@ Gateway, the Web UI and workloads, bootstrapped with Terraform and Flux Operator
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/terraform-bootstrap-dark.png">
-  <img alt="Bootstrap with Terraform: a bootstrap Job installs SPIRE, Flux Operator and the FluxInstance, then the Flux controllers adopt the SPIRE and Flux Operator releases" src="diagrams/terraform-bootstrap.png">
+  <img alt="Terraform runs from the repository and installs SPIRE, then Flux Operator, then applies the FluxInstance; the Flux controllers sync the same repository and adopt the SPIRE and Flux Operator releases" src="diagrams/terraform-bootstrap.png">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/mtls-ingress-dark.png">
-  <img alt="Ingress over SPIFFE mTLS: Envoy routes flux.localhost/hook/ to the Receiver, flux.localhost/ to the Web UI and frontend.localhost/ to the frontend podinfo" src="diagrams/mtls-ingress.png">
+  <img alt="Envoy Gateway routes HTTP over SPIFFE mTLS to the webhook Receiver, the Flux Web UI and the frontend; the Receiver triggers source-controller, the Web UI downloads artifacts from it over SPIFFE mTLS, and the frontend calls the backend over SPIFFE mTLS" src="diagrams/mtls-ingress.png">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/mtls-artifacts-dark.png">
-  <img alt="Artifact delivery over SPIFFE mTLS: source-watcher, kustomize-controller and helm-controller fetch artifacts from source-controller" src="diagrams/mtls-artifacts.png">
+  <img alt="source-controller serves artifacts over SPIFFE mTLS to source-watcher, kustomize-controller, helm-controller and flux-operator, which send events to notification-controller over SPIFFE mTLS" src="diagrams/mtls-artifacts.png">
 </picture>
 
 ## Layout

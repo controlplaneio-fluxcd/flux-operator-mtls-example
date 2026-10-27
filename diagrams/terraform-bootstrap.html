@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terraform Bootstrap</title>
+  <title>Terraform installs SPIRE and Flux Operator, Flux adopts them</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -97,19 +97,6 @@
     .theme-toggle input:checked + .track::after { transform: translateX(12px); background: var(--accent); }
     .theme-toggle input:focus-visible + .track { outline: 2px solid var(--link); outline-offset: 2px; }
 
-    .eyebrow {
-      font-family: var(--font-mono);
-      font-size: 0.66rem;
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--color-muted);
-      margin-bottom: 0.5rem;
-    }
-
-    .eyebrow-url { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--link); }
-    .eyebrow-url::before { content: "/"; color: var(--soft); margin: 0 0.6em 0 0.4em; }
-
     h1 {
       font-family: var(--font-title);
       font-size: 1.375rem;
@@ -117,204 +104,109 @@
       letter-spacing: -0.02em;
       line-height: 1.2;
       color: var(--color-ink);
-      margin-bottom: 0.25rem;
+      margin-bottom: 1rem;
     }
 
-    .subtitle {
-      font-family: var(--font-title);
-      font-size: 0.9375rem;
-      font-weight: 500;
-      color: var(--color-muted);
-      margin-bottom: 0.5rem;
-    }
-
-    svg { width: 100%; min-width: 912px; display: block; }
+    svg { width: 100%; min-width: 952px; display: block; }
   </style>
 </head>
 <body>
   <div class="frame">
     <span id="dark" hidden></span>
     <label class="theme-toggle"><input type="checkbox" id="theme"><span class="track"></span><span>Dark</span></label>
-    <p class="eyebrow">Architecture<span class="eyebrow-url">fluxoperator.dev</span></p>
-    <h1>Bootstrap with Terraform</h1>
-    <p class="subtitle">Terraform installs SPIRE and Flux Operator once, then Flux adopts them</p>
+    <h1>Terraform installs SPIRE and Flux Operator, Flux adopts them</h1>
 
-    <svg viewBox="16 56 912 552" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bootstrap with Terraform" aria-describedby="terraform-bootstrap-desc">
-      <desc id="terraform-bootstrap-desc">Architecture diagram of the cluster bootstrap. Terraform creates the kind cluster and installs the bootstrap Job with Helm. The Job installs the SPIRE charts in spire-system, installs the Flux Operator chart and applies the FluxInstance in flux-system, then waits for it to become ready. Flux Operator reconciles the FluxInstance, which installs the Flux controllers with SPIFFE mTLS. The controllers pull the Git repository and adopt the SPIRE and Flux Operator Helm releases, after which the bootstrap no longer changes them.</desc>
+    <svg viewBox="16 16 952 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Terraform installs SPIRE and Flux Operator, Flux adopts them" aria-describedby="terraform-bootstrap-desc">
+      <desc id="terraform-bootstrap-desc">Terraform runs from the terraform directory of the Git repository and reads the same SPIRE and Flux Operator values files as the Flux HelmReleases. Its flux-operator-bootstrap module installs SPIRE, then Flux Operator, then applies the FluxInstance with SPIFFE mTLS enabled. Flux Operator reconciles the FluxInstance and installs the Flux controllers, which sync clusters/kind from the same repository and adopt the SPIRE and Flux Operator Helm releases.</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--muted)"/></marker>
         <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--link)"/></marker>
       </defs>
 
-      <rect x="16" y="56" width="912" height="552" fill="var(--paper)"/>
+      <rect x="16" y="16" width="952" height="440" fill="var(--paper)"/>
 
-      <!-- ===== Zones (painted first) ===== -->
-      <!-- Zone: flux-operator-bootstrap -->
-      <rect x="240" y="72" width="208" height="448" rx="8"
-            fill="rgba(var(--ink-rgb),0.02)" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
-      <rect x="260" y="76" width="136" height="12" rx="2" fill="var(--paper)"/>
-      <text x="328" y="85" fill="var(--soft)" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">FLUX-OPERATOR-BOOTSTRAP</text>
+      <!-- ===== Arrows ===== -->
+      <!-- Terraform -> Git repository -->
+      <path d="M252,128 V72 Q252,64 260,64 H432" fill="none" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
+      <!-- Flux controllers -> Git repository -->
+      <path d="M808,320 V72 Q808,64 800,64 H584" fill="none" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
+      <!-- Terraform -> SPIRE -->
+      <path d="M328,160 H432" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- Terraform -> Flux Operator -->
+      <path d="M268,192 V248 Q268,256 276,256 H432" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- Terraform -> FluxInstance -->
+      <path d="M236,192 V344 Q236,352 244,352 H432" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- Flux Operator -> FluxInstance -->
+      <path d="M508,288 V320" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- FluxInstance -> Flux controllers -->
+      <path d="M584,352 H688" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- Flux controllers adopt Flux Operator -->
+      <path d="M728,320 V264 Q728,256 720,256 H584" fill="none" stroke="var(--muted)" stroke-dasharray="4,3" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- Flux controllers adopt SPIRE -->
+      <path d="M768,320 V168 Q768,160 760,160 H584" fill="none" stroke="var(--muted)" stroke-dasharray="4,3" marker-end="url(#arrow)" stroke-width="1.2"/>
 
-      <!-- Zone: spire-system -->
-      <rect x="504" y="168" width="184" height="112" rx="8"
-            fill="rgba(var(--ink-rgb),0.02)" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
-      <rect x="524" y="172" width="76" height="12" rx="2" fill="var(--paper)"/>
-      <text x="562" y="181" fill="var(--soft)" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">SPIRE-SYSTEM</text>
-
-      <!-- Zone: flux-system -->
-      <rect x="504" y="296" width="408" height="208" rx="8"
-            fill="rgba(var(--ink-rgb),0.02)" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
-      <rect x="524" y="300" width="72" height="12" rx="2" fill="var(--paper)"/>
-      <text x="560" y="309" fill="var(--soft)" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">FLUX-SYSTEM</text>
-
-      <!-- ===== Arrows (behind boxes) ===== -->
-      <!-- A1 Terraform -> bootstrap Job (helm_release) -->
-      <line x1="184" y1="136" x2="256" y2="136" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- A2 Job -> SPIRE -->
-      <line x1="432" y1="232" x2="520" y2="232" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- A4 Job -> Flux Operator -->
-      <line x1="432" y1="360" x2="520" y2="360" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- A5 Job -> FluxInstance -->
-      <line x1="432" y1="456" x2="520" y2="456" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- A6 Flux Operator -> FluxInstance -->
-      <line x1="596" y1="392" x2="596" y2="424" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- A7 FluxInstance -> Flux controllers -->
-      <line x1="672" y1="456" x2="744" y2="456" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- A8 Flux controllers -> Flux Operator release (adoption) -->
-      <line x1="744" y1="360" x2="672" y2="360" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-      <!-- A9 Flux controllers -> SPIRE release (adoption): exit top at x=768, run up, turn left into SPIRE -->
-      <path d="M 768,328 V 240 Q 768,232 760,232 H 672"
-            fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-      <!-- A10 Git repository -> Flux controllers (HTTPS) -->
-      <line x1="820" y1="168" x2="820" y2="328" stroke="var(--link)" stroke-width="1.2" marker-end="url(#arrow-link)"/>
-
-      <!-- ===== Arrow labels (masked, 8px above the stroke or beside vertical segments) ===== -->
-      <rect x="196" y="116" width="48" height="12" rx="2" fill="var(--paper)"/>
-      <text x="220" y="125" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">INSTALL</text>
-
-      <rect x="452" y="212" width="48" height="12" rx="2" fill="var(--paper)"/>
-      <text x="476" y="221" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">INSTALL</text>
-      <rect x="452" y="340" width="48" height="12" rx="2" fill="var(--paper)"/>
-      <text x="476" y="349" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">INSTALL</text>
-      <rect x="456" y="436" width="40" height="12" rx="2" fill="var(--paper)"/>
-      <text x="476" y="445" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">APPLY</text>
-
-      <rect x="604" y="402" width="64" height="12" rx="2" fill="var(--paper)"/>
-      <text x="608" y="411" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.08em">RECONCILE</text>
-      <rect x="684" y="436" width="48" height="12" rx="2" fill="var(--paper)"/>
-      <text x="708" y="445" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">INSTALL</text>
-
-      <rect x="688" y="340" width="40" height="12" rx="2" fill="var(--paper)"/>
-      <text x="708" y="349" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ADOPT</text>
-      <rect x="696" y="212" width="40" height="12" rx="2" fill="var(--paper)"/>
-      <text x="716" y="221" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ADOPT</text>
-
-      <rect x="828" y="236" width="36" height="12" rx="2" fill="var(--paper)"/>
-      <text x="832" y="245" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.08em">PULL</text>
+      <!-- ===== Arrow labels ===== -->
+      <rect x="354" y="44" width="52" height="12" rx="2" fill="var(--paper)"/>
+      <text x="380" y="53" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CHECKOUT</text>
+      <rect x="620" y="44" width="32" height="12" rx="2" fill="var(--paper)"/>
+      <text x="636" y="53" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PULL</text>
+      <rect x="350" y="140" width="60" height="12" rx="2" fill="var(--paper)"/>
+      <text x="380" y="149" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">1 INSTALL</text>
+      <rect x="350" y="236" width="60" height="12" rx="2" fill="var(--paper)"/>
+      <text x="380" y="245" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">2 INSTALL</text>
+      <rect x="356" y="332" width="48" height="12" rx="2" fill="var(--paper)"/>
+      <text x="380" y="341" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">3 APPLY</text>
+      <rect x="512" y="298" width="60" height="12" rx="2" fill="var(--paper)"/>
+      <text x="516" y="307" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.08em">RECONCILE</text>
+      <rect x="612" y="332" width="48" height="12" rx="2" fill="var(--paper)"/>
+      <text x="636" y="341" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">INSTALL</text>
+      <rect x="618" y="236" width="36" height="12" rx="2" fill="var(--paper)"/>
+      <text x="636" y="245" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ADOPT</text>
+      <rect x="618" y="140" width="36" height="12" rx="2" fill="var(--paper)"/>
+      <text x="636" y="149" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ADOPT</text>
 
       <!-- ===== Nodes ===== -->
-      <!-- N1: Terraform (actor) -->
-      <rect x="32" y="104" width="152" height="64" rx="6" fill="var(--paper)"/>
-      <rect x="32" y="104" width="152" height="64" rx="6" fill="rgba(var(--muted-rgb),0.10)" stroke="var(--soft)" stroke-width="1"/>
-      <g transform="translate(40,112) scale(0.6667)" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7l5 5l-5 5"/><path d="M12 19l7 0"/></g>
-      <text x="108" y="140" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Terraform</text>
-      <text x="108" y="156" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">kind · bootstrap module</text>
+      <!-- Git repository -->
+      <rect x="432" y="32" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="432" y="32" width="152" height="64" rx="6" fill="rgba(var(--ink-rgb),0.06)" stroke="rgba(var(--ink-rgb),0.28)" stroke-width="1"/>
+      <text x="508" y="62" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Git repository</text>
+      <text x="508" y="78" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">terraform/ · clusters/kind</text>
+      <!-- Terraform -->
+      <rect x="176" y="128" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="176" y="128" width="152" height="64" rx="6" fill="rgba(var(--accent-rgb),0.08)" stroke="var(--accent)" stroke-width="1"/>
+      <text x="252" y="158" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Terraform</text>
+      <text x="252" y="174" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">flux-operator-bootstrap</text>
+      <!-- SPIRE -->
+      <rect x="432" y="128" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="432" y="128" width="152" height="64" rx="6" fill="rgba(var(--ink-rgb),0.06)" stroke="rgba(var(--ink-rgb),0.28)" stroke-width="1"/>
+      <text x="508" y="158" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">SPIRE</text>
+      <text x="508" y="174" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">server · agent · CSI</text>
+      <!-- Flux Operator -->
+      <rect x="432" y="224" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="432" y="224" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="508" y="254" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Flux Operator</text>
+      <text x="508" y="270" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">SVID via CSI</text>
+      <!-- FluxInstance -->
+      <rect x="432" y="320" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="432" y="320" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="508" y="350" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">FluxInstance</text>
+      <text x="508" y="366" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">spec.spiffe.mtls</text>
+      <!-- Flux controllers -->
+      <rect x="688" y="320" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="688" y="320" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="764" y="350" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Flux controllers</text>
+      <text x="764" y="366" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">mTLS between them</text>
 
-      <!-- N2: Bootstrap Job (focal) with one row per module input -->
-      <rect x="256" y="104" width="176" height="400" rx="6" fill="var(--paper)"/>
-      <rect x="256" y="104" width="176" height="400" rx="6" fill="rgba(var(--accent-rgb),0.08)" stroke="var(--accent)" stroke-width="1"/>
-      <rect x="264" y="112" width="28" height="12" rx="2" fill="transparent" stroke="rgba(var(--accent-rgb),0.50)" stroke-width="0.8"/>
-      <text x="278" y="121" fill="var(--accent)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JOB</text>
-      <text x="344" y="140" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Bootstrap Job</text>
-      <text x="344" y="156" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">runs on input change</text>
-      <line x1="256" y1="168" x2="432" y2="168" stroke="rgba(var(--accent-rgb),0.30)" stroke-width="0.8"/>
-      <text x="268" y="231" fill="var(--ink)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="start">prerequisites</text>
-      <text x="268" y="245" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start">namespace · SPIRE charts</text>
-      <line x1="256" y1="312" x2="432" y2="312" stroke="rgba(var(--accent-rgb),0.30)" stroke-width="0.8"/>
-      <text x="268" y="359" fill="var(--ink)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="start">operator_chart</text>
-      <text x="268" y="373" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start">until adopted</text>
-      <line x1="256" y1="408" x2="432" y2="408" stroke="rgba(var(--accent-rgb),0.30)" stroke-width="0.8"/>
-      <text x="268" y="455" fill="var(--ink)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="start">instance_yaml</text>
-      <text x="268" y="469" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start">apply · wait for Ready</text>
-
-      <!-- N3: SPIRE (Kubernetes objects) -->
-      <rect x="520" y="200" width="152" height="64" rx="6" fill="var(--paper)"/>
-      <rect x="520" y="200" width="152" height="64" rx="6" fill="rgba(var(--ink-rgb),0.08)" stroke="rgba(var(--ink-rgb),0.25)" stroke-width="1"/>
-      <rect x="528" y="208" width="28" height="12" rx="2" fill="transparent" stroke="rgba(var(--muted-rgb),0.50)" stroke-width="0.8"/>
-      <text x="542" y="217" fill="var(--muted)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">HELM</text>
-      <text x="596" y="236" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">SPIRE</text>
-      <text x="596" y="252" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">server · agent · CSI</text>
-
-      <!-- N5: Flux Operator (Flux) -->
-      <rect x="520" y="328" width="152" height="64" rx="6" fill="var(--paper)"/>
-      <rect x="520" y="328" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
-      <rect x="528" y="336" width="28" height="12" rx="2" fill="transparent" stroke="rgba(var(--ink-rgb),0.40)" stroke-width="0.8"/>
-      <text x="542" y="345" fill="var(--ink)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CTRL</text>
-      <text x="596" y="364" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Flux Operator</text>
-      <text x="596" y="380" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">SVID via CSI</text>
-
-      <!-- N6: FluxInstance (Kubernetes object) -->
-      <rect x="520" y="424" width="152" height="64" rx="6" fill="var(--paper)"/>
-      <rect x="520" y="424" width="152" height="64" rx="6" fill="rgba(var(--ink-rgb),0.08)" stroke="rgba(var(--ink-rgb),0.25)" stroke-width="1"/>
-      <rect x="528" y="432" width="28" height="12" rx="2" fill="transparent" stroke="rgba(var(--muted-rgb),0.50)" stroke-width="0.8"/>
-      <text x="542" y="441" fill="var(--muted)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CR</text>
-      <text x="596" y="460" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">FluxInstance</text>
-      <text x="596" y="476" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">spiffe.mtls · sync</text>
-
-      <!-- N7: Git repository (external) -->
-      <rect x="744" y="104" width="152" height="64" rx="6" fill="var(--paper)"/>
-      <rect x="744" y="104" width="152" height="64" rx="6" fill="rgba(var(--ink-rgb),0.03)" stroke="rgba(var(--ink-rgb),0.30)" stroke-width="1"/>
-      <rect x="752" y="112" width="28" height="12" rx="2" fill="transparent" stroke="rgba(var(--ink-rgb),0.22)" stroke-width="0.8"/>
-      <text x="766" y="121" fill="var(--soft)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GIT</text>
-      <text x="820" y="140" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Git repository</text>
-      <text x="820" y="156" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">clusters/kind</text>
-
-      <!-- N8: Flux controllers (Flux) -->
-      <rect x="744" y="328" width="152" height="160" rx="6" fill="var(--paper)"/>
-      <rect x="744" y="328" width="152" height="160" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
-      <rect x="752" y="336" width="28" height="12" rx="2" fill="transparent" stroke="rgba(var(--ink-rgb),0.40)" stroke-width="0.8"/>
-      <text x="766" y="345" fill="var(--ink)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CTRL</text>
-      <text x="820" y="364" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Flux controllers</text>
-      <text x="820" y="380" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">SPIFFE mTLS</text>
-      <line x1="744" y1="392" x2="896" y2="392" stroke="rgba(var(--muted-rgb),0.30)" stroke-width="0.8"/>
-      <g fill="var(--ink)" font-size="8" font-family="'Geist Mono', monospace">
-        <text x="756" y="410">source-controller</text>
-        <text x="756" y="426">source-watcher</text>
-        <text x="756" y="442">kustomize-controller</text>
-        <text x="756" y="458">helm-controller</text>
-        <text x="756" y="474">notification-controller</text>
-      </g>
-
-      <!-- ===== Legend strip ===== -->
-      <line x1="32" y1="552" x2="912" y2="552" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
-      <text x="32" y="568" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
-
-      <rect x="32" y="580" width="14" height="10" rx="2" fill="rgba(var(--accent-rgb),0.08)" stroke="var(--accent)" stroke-width="1"/>
-      <text x="52" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Bootstrap</text>
-
-      <rect x="128" y="580" width="14" height="10" rx="2" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
-      <text x="148" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Flux component</text>
-
-      <rect x="248" y="580" width="14" height="10" rx="2" fill="rgba(var(--ink-rgb),0.08)" stroke="rgba(var(--ink-rgb),0.25)" stroke-width="1"/>
-      <text x="268" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Kubernetes objects</text>
-
-      <rect x="376" y="580" width="14" height="10" rx="2" fill="rgba(var(--ink-rgb),0.03)" stroke="rgba(var(--ink-rgb),0.30)" stroke-width="1"/>
-      <text x="396" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">External</text>
-
-      <rect x="464" y="580" width="14" height="10" rx="2" fill="rgba(var(--muted-rgb),0.10)" stroke="var(--soft)" stroke-width="1"/>
-      <text x="484" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Actor</text>
-
-      <line x1="544" y1="586" x2="572" y2="586" stroke="var(--muted)" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <text x="580" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Install and reconcile</text>
-
-      <line x1="688" y1="586" x2="716" y2="586" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-      <text x="724" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Hand-off to Flux</text>
-
-      <line x1="816" y1="586" x2="844" y2="586" stroke="var(--link)" stroke-width="1.2" marker-end="url(#arrow-link)"/>
-      <text x="852" y="588" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">HTTPS</text>
+      <!-- ===== Legend ===== -->
+      <line x1="32" y1="416" x2="952" y2="416" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
+      <line x1="32" y1="437" x2="60" y2="437" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <text x="68" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Install or reconcile</text>
+      <line x1="172" y1="437" x2="200" y2="437" stroke="var(--muted)" stroke-dasharray="4,3" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <text x="208" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Adopted by Flux</text>
+      <line x1="294" y1="437" x2="322" y2="437" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
+      <text x="330" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Read from Git</text>
+      <rect x="408" y="432" width="14" height="10" rx="2" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="428" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Flux component</text>
     </svg>
   </div>
 </body>

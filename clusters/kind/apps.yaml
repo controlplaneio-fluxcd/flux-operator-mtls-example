@@ -1,0 +1,114 @@
+# Every directory under apps/ becomes an app with its own namespace, an
+# ExternalArtifact published by source-watcher from the flux-system
+# GitRepository, and a Kustomization that runs with admin rights in that
+# namespace only.
+apiVersion: source.extensions.fluxcd.io/v1beta1
+kind: ArtifactGenerator
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  # Publishing to other namespaces and managing them is authorized against
+  # this ServiceAccount.
+  serviceAccountName: flux-operator
+  commonMetadata:
+    labels:
+      app.kubernetes.io/part-of: apps
+  sources:
+    - alias: repo
+      kind: GitRepository
+      name: flux-system
+  pathPattern: "@repo/apps/{app}"
+  managedNamespaces:
+    allowedNames:
+      - "ns in ['frontend', 'backend']"
+    prune: true
+    metadata:
+      from:
+        - strategy: Override
+          namespace: "*"
+          labels:
+            pod-security.kubernetes.io/enforce: restricted
+  artifacts:
+    - name: "{app}"
+      namespace: "{app}"
+      copy:
+        - from: "@repo/apps/{app}/**"
+          to: "@artifact/"
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  serviceAccountName: flux-operator
+  type: ExternalArtifact
+  selectors:
+    - namespace: "*"
+      matchLabels:
+        app.kubernetes.io/part-of: apps
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  serviceAccountName: flux-operator
+  dependsOn:
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSet
+      name: infrastructure
+      namespace: flux-system
+      ready: true
+  inputsFrom:
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: apps
+  resources:
+    - apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: flux
+        namespace: << inputs.namespace >>
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: flux
+        namespace: << inputs.namespace >>
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: admin
+      subjects:
+        - kind: ServiceAccount
+          name: flux
+          namespace: << inputs.namespace >>
+    # Trust bundle for BackendTLSPolicies, which can only reference
+    # Secrets in their own namespace.
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: spiffe-root-ca-sds
+        namespace: << inputs.namespace >>
+      type: gateway.envoyproxy.io/sds
+      stringData:
+        url: "unix:///spiffe-workload-api/spire-agent.sock"
+        secretName: "ROOTCA"
+    - apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: << inputs.name >>
+        namespace: << inputs.namespace >>
+      spec:
+        serviceAccountName: flux
+        interval: 1h
+        retryInterval: 2m
+        timeout: 5m
+        sourceRef:
+          kind: ExternalArtifact
+          name: << inputs.name >>
+        path: ./
+        prune: true
+        wait: true

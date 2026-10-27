@@ -1,0 +1,39 @@
+# Envoy calls the frontend HTTPS port with its SVID and verifies the
+# frontend SPIFFE ID against the SPIRE trust bundle.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: podinfo
+  namespace: frontend
+spec:
+  parentRefs:
+    - name: envoy
+      namespace: envoy-gateway-system
+      sectionName: apps
+  hostnames:
+    - frontend.localhost
+  rules:
+    - backendRefs:
+        - name: podinfo
+          port: 9899
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: podinfo
+  namespace: frontend
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: podinfo
+      sectionName: https
+  validation:
+    caCertificateRefs:
+      - group: ""
+        kind: Secret
+        name: spiffe-root-ca-sds
+    hostname: podinfo.frontend.svc.cluster.local
+    subjectAltNames:
+      - type: URI
+        uri: spiffe://example.org/ns/frontend/sa/podinfo

@@ -1,0 +1,122 @@
+# Envoy verifies the backends against the SPIRE trust bundle.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spiffe-root-ca-sds
+  namespace: flux-system
+type: gateway.envoyproxy.io/sds
+stringData:
+  url: "unix:///spiffe-workload-api/spire-agent.sock"
+  secretName: "ROOTCA"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: envoy
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: envoy
+  # *.localhost resolves to loopback without DNS, so a single port-forward
+  # serves every hostname. The exact flux hostname takes precedence over the
+  # apps wildcard, so apps cannot claim it.
+  listeners:
+    - name: flux
+      hostname: flux.localhost
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: flux-system
+    - name: apps
+      hostname: "*.localhost"
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              app.kubernetes.io/part-of: apps
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: webhook-receiver
+  namespace: flux-system
+spec:
+  parentRefs:
+    - name: envoy
+      namespace: envoy-gateway-system
+      sectionName: flux
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /hook/
+      backendRefs:
+        - name: webhook-receiver
+          port: 443
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: flux-web
+  namespace: flux-system
+spec:
+  parentRefs:
+    - name: envoy
+      namespace: envoy-gateway-system
+      sectionName: flux
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: flux-operator
+          port: 9080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: webhook-receiver
+  namespace: flux-system
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: webhook-receiver
+      sectionName: https
+  validation:
+    caCertificateRefs:
+      - group: ""
+        kind: Secret
+        name: spiffe-root-ca-sds
+    hostname: webhook-receiver.flux-system.svc.cluster.local
+    subjectAltNames:
+      - type: URI
+        uri: spiffe://example.org/ns/flux-system/sa/notification-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: flux-operator
+  namespace: flux-system
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: flux-operator
+      sectionName: http-web
+  validation:
+    caCertificateRefs:
+      - group: ""
+        kind: Secret
+        name: spiffe-root-ca-sds
+    hostname: flux-operator.flux-system.svc.cluster.local
+    subjectAltNames:
+      - type: URI
+        uri: spiffe://example.org/ns/flux-system/sa/flux-operator

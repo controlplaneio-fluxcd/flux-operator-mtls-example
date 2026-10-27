@@ -1,0 +1,73 @@
+# The Envoy proxy gets the SPIFFE ID
+# spiffe://example.org/ns/envoy-gateway-system/sa/envoy-gateway-proxy
+# from the SPIRE agent, selected by the spiffe.io/identity label.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: envoy-gateway-proxy
+  namespace: envoy-gateway-system
+---
+# Envoy fetches its X.509-SVID from the SPIRE agent SDS API over the
+# Workload API socket.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: envoy-client-svid-sds
+  namespace: envoy-gateway-system
+type: gateway.envoyproxy.io/sds
+stringData:
+  url: "unix:///spiffe-workload-api/spire-agent.sock"
+  secretName: "default"
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: spiffe
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        name: envoy
+        type: ClusterIP
+      envoyDeployment:
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              template:
+                metadata:
+                  labels:
+                    spiffe.io/identity: "true"
+                spec:
+                  serviceAccountName: envoy-gateway-proxy
+                  volumes:
+                    - name: spiffe-workload-api
+                      csi:
+                        driver: csi.spiffe.io
+                        readOnly: true
+                  containers:
+                    - name: envoy
+                      volumeMounts:
+                        - name: spiffe-workload-api
+                          mountPath: /spiffe-workload-api
+                          readOnly: true
+  # Client certificate Envoy presents to every backend with a BackendTLSPolicy.
+  backendTLS:
+    clientCertificateRef:
+      group: ""
+      kind: Secret
+      name: envoy-client-svid-sds
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: spiffe
+    namespace: envoy-gateway-system

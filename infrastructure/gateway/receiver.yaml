@@ -1,0 +1,16 @@
+# Reached through Envoy at /hook/<digest>. notification-controller accepts
+# only mTLS clients listed in the FluxInstance .spec.spiffe.mtls.receivers.
+# The token Secret is managed by the Terraform bootstrap.
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Receiver
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  type: generic
+  secretRef:
+    name: receiver-token
+  resources:
+    - apiVersion: source.toolkit.fluxcd.io/v1
+      kind: GitRepository
+      name: flux-system

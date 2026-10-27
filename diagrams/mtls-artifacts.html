@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artifacts and events over SPIFFE mTLS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper:      #f5f5f5;
+      --paper-2:    #ffffff;
+      --ink:        #2d3142;
+      --ink-rgb:    45,49,66;
+      --muted:      #4f5d75;
+      --muted-rgb:  79,93,117;
+      --soft:       #7a8399;
+      --accent:     #eb6c36;
+      --accent-rgb: 235,108,54;
+      --link:       #2e5aa8;
+      --color-paper:  var(--paper);
+      --color-ink:    var(--ink);
+      --color-muted:  var(--muted);
+      --color-accent: var(--accent);
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-title:    'Inter', system-ui, sans-serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    :root:has(#theme:checked),
+    :root:has(#dark:target) {
+      --paper:      #2d3142;
+      --paper-2:    #393e53;
+      --ink:        #f5f5f5;
+      --ink-rgb:    245,245,245;
+      --muted:      #bfc0c0;
+      --muted-rgb:  191,192,192;
+      --soft:       #8e98ac;
+      --accent:     #f08a59;
+      --accent-rgb: 240,138,89;
+      --link:       #6a95d8;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      display: flex;
+      justify-content: center;
+      padding: 1.25rem 1.5rem 1rem;
+    }
+
+    .frame { width: 100%; max-width: 1080px; position: relative; }
+
+    .theme-toggle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      opacity: 0;
+      transition: opacity 120ms ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+    .frame:hover .theme-toggle, .theme-toggle:focus-within { opacity: 1; }
+    @media print { .theme-toggle { display: none; } }
+    .theme-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .theme-toggle .track {
+      width: 28px;
+      height: 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(var(--ink-rgb), 0.30);
+      background: rgba(var(--ink-rgb), 0.05);
+      position: relative;
+      transition: background 120ms ease;
+    }
+    .theme-toggle .track::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--color-muted);
+      transition: transform 120ms ease;
+    }
+    .theme-toggle input:checked + .track { background: rgba(var(--accent-rgb), 0.15); border-color: var(--accent); }
+    .theme-toggle input:checked + .track::after { transform: translateX(12px); background: var(--accent); }
+    .theme-toggle input:focus-visible + .track { outline: 2px solid var(--link); outline-offset: 2px; }
+
+    h1 {
+      font-family: var(--font-title);
+      font-size: 1.375rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--color-ink);
+      margin-bottom: 1rem;
+    }
+
+    svg { width: 100%; min-width: 952px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <span id="dark" hidden></span>
+    <label class="theme-toggle"><input type="checkbox" id="theme"><span class="track"></span><span>Dark</span></label>
+    <h1>Artifacts and events over SPIFFE mTLS</h1>
+
+    <svg viewBox="16 16 952 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Artifacts and events over SPIFFE mTLS" aria-describedby="mtls-artifacts-desc">
+      <desc id="mtls-artifacts-desc">source-controller pulls the Git repository and the Helm charts from the OCI registry over HTTPS and serves the artifacts over SPIFFE mTLS to source-watcher, kustomize-controller, helm-controller and flux-operator for the Web UI downloads. source-watcher serves the app artifacts to kustomize-controller. The controllers and flux-operator send events to notification-controller, which accepts only the Flux SPIFFE IDs.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--muted)"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--link)"/></marker>
+      </defs>
+
+      <rect x="16" y="16" width="952" height="440" fill="var(--paper)"/>
+
+      <!-- ===== Arrows ===== -->
+      <!-- Git repository -> source-controller -->
+      <path d="M184,160 H280" fill="none" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
+      <!-- OCI registry -> source-controller -->
+      <path d="M184,256 H280" fill="none" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
+      <!-- source-controller -> source-watcher -->
+      <path d="M432,208 H472 Q480,208 480,200 V72 Q480,64 488,64 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- source-watcher -> notification-controller -->
+      <path d="M680,64 H720 Q728,64 728,72 V200 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- source-controller -> kustomize-controller -->
+      <path d="M432,208 H472 Q480,208 480,200 V168 Q480,160 488,160 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- kustomize-controller -> notification-controller -->
+      <path d="M680,160 H720 Q728,160 728,168 V200 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- source-controller -> helm-controller -->
+      <path d="M432,208 H472 Q480,208 480,216 V248 Q480,256 488,256 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- helm-controller -> notification-controller -->
+      <path d="M680,256 H720 Q728,256 728,248 V216 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- source-controller -> flux-operator -->
+      <path d="M432,208 H472 Q480,208 480,216 V344 Q480,352 488,352 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- flux-operator -> notification-controller -->
+      <path d="M680,352 H720 Q728,352 728,344 V216 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <!-- source-watcher -> kustomize-controller -->
+      <path d="M604,96 V128" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+
+      <!-- ===== Arrow labels ===== -->
+      <rect x="416" y="103" width="60" height="12" rx="2" fill="var(--paper)"/>
+      <text x="472" y="112" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">ARTIFACTS</text>
+      <rect x="732" y="103" width="44" height="12" rx="2" fill="var(--paper)"/>
+      <text x="736" y="112" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.08em">EVENTS</text>
+      <rect x="608" y="106" width="80" height="12" rx="2" fill="var(--paper)"/>
+      <text x="612" y="115" fill="var(--muted)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.08em">APP ARTIFACTS</text>
+
+      <!-- ===== Nodes ===== -->
+      <!-- Git repository -->
+      <rect x="32" y="128" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="32" y="128" width="152" height="64" rx="6" fill="rgba(var(--ink-rgb),0.06)" stroke="rgba(var(--ink-rgb),0.28)" stroke-width="1"/>
+      <text x="108" y="158" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Git repository</text>
+      <text x="108" y="174" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">clusters · infra · apps</text>
+      <!-- OCI registry -->
+      <rect x="32" y="224" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="32" y="224" width="152" height="64" rx="6" fill="rgba(var(--ink-rgb),0.06)" stroke="rgba(var(--ink-rgb),0.28)" stroke-width="1"/>
+      <text x="108" y="254" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">OCI registry</text>
+      <text x="108" y="270" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Helm charts</text>
+      <!-- source-controller -->
+      <rect x="280" y="128" width="152" height="160" rx="6" fill="var(--paper)"/>
+      <rect x="280" y="128" width="152" height="160" rx="6" fill="rgba(var(--accent-rgb),0.08)" stroke="var(--accent)" stroke-width="1"/>
+      <text x="356" y="198" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">source-controller</text>
+      <text x="356" y="214" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">GitRepository</text>
+      <text x="356" y="230" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">OCIRepository</text>
+      <!-- source-watcher -->
+      <rect x="528" y="32" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="528" y="32" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="604" y="62" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">source-watcher</text>
+      <text x="604" y="78" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">ArtifactGenerator</text>
+      <!-- kustomize-controller -->
+      <rect x="528" y="128" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="528" y="128" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="604" y="158" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">kustomize-controller</text>
+      <text x="604" y="174" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Kustomization</text>
+      <!-- helm-controller -->
+      <rect x="528" y="224" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="528" y="224" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="604" y="254" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">helm-controller</text>
+      <text x="604" y="270" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">HelmRelease</text>
+      <!-- flux-operator -->
+      <rect x="528" y="320" width="152" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="528" y="320" width="152" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="604" y="350" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">flux-operator</text>
+      <text x="604" y="366" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Web UI downloads</text>
+      <!-- notification-controller -->
+      <rect x="776" y="176" width="176" height="64" rx="6" fill="var(--paper)"/>
+      <rect x="776" y="176" width="176" height="64" rx="6" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="864" y="206" fill="var(--ink)" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">notification-controller</text>
+      <text x="864" y="222" fill="var(--muted)" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">accepts Flux IDs only</text>
+
+      <!-- ===== Legend ===== -->
+      <line x1="32" y1="416" x2="952" y2="416" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
+      <line x1="32" y1="437" x2="60" y2="437" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
+      <text x="68" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">HTTPS</text>
+      <line x1="118" y1="437" x2="146" y2="437" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <text x="154" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">SPIFFE mTLS</text>
+      <rect x="225" y="432" width="14" height="10" rx="2" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
+      <text x="245" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Flux component</text>
+    </svg>
+  </div>
+</body>
+</html>

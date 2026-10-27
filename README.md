@@ -54,7 +54,8 @@ Gateway, the Web UI and workloads, bootstrapped with Terraform and Flux Operator
 ```text
 terraform/                  kind cluster and bootstrap module
 clusters/kind/
-  flux-system/              FluxInstance, flux-operator HelmRelease, values and RBAC
+  flux-system/              FluxInstance, flux-operator HelmRelease, values, RBAC and
+                            ServiceAccount admission policies
   infrastructure.yaml       ResourceSet: one Kustomization per infrastructure/ component
   apps.yaml                 ArtifactGenerator, input provider and ResourceSet for apps/
 infrastructure/
@@ -135,6 +136,8 @@ syncs the current branch, which must be pushed; set `GIT_REF` to override and
 - The ArtifactGenerator manages the app namespaces, which enforce the
   `restricted` Pod Security Standard, and their ExternalArtifacts are Ready.
 - The frontend ServiceAccount can manage its own namespace and nothing else.
+- Pods cannot run as `flux` in any namespace, and workloads in `flux-system`
+  cannot use the Flux controller ServiceAccounts.
 - source-controller and source-watcher answer plain HTTP with 400.
 - The Web UI and the Receiver reject TLS clients without an SVID.
 - A Receiver call through Envoy reaches notification-controller.
@@ -181,6 +184,15 @@ CI runs the same script on pull requests, pushes to `main` and weekly.
   namespaced `admin` role. Cross-namespace source references are disabled, so
   the ArtifactGenerator publishes each app's ExternalArtifact into the app
   namespace instead of the apps referencing the flux-system GitRepository.
+- **The Flux ServiceAccounts are reserved.** Two ValidatingAdmissionPolicies
+  (`clusters/kind/flux-system/serviceaccount-policies.yaml`) stop other
+  workloads from borrowing Flux rights. No pod may run as `flux`, the
+  ServiceAccount Flux impersonates in every infrastructure and app namespace.
+  In `flux-system`, a controller ServiceAccount is only admitted for the
+  Deployment of the same name, its ReplicaSets and their pods; a chart
+  installed there needs its own ServiceAccount. Other workload kinds
+  (StatefulSets, DaemonSets, Jobs, CronJobs, ReplicationControllers) are
+  denied a Flux ServiceAccount when created.
 - **Apps expose themselves on the Gateway.** The `apps` listener
   (`*.localhost`) accepts HTTPRoutes only from namespaces labelled
   `app.kubernetes.io/part-of: apps`; the `flux` listener (`flux.localhost`)

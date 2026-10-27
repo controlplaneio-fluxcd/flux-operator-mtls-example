@@ -103,6 +103,27 @@ expect_plain_http_rejection() {
     [[ "${code}" == "400" ]] || fail "$2 answered plain HTTP with ${code}"
 }
 
+# pod_spec <service account> <restart policy> prints a pod spec that passes
+# the restricted Pod Security Standard, so only the policies can reject it.
+pod_spec() {
+    printf '{"serviceAccountName": "%s", "restartPolicy": "%s", "securityContext": {"runAsNonRoot": true, "runAsUser": 65534, "seccompProfile": {"type": "RuntimeDefault"}}, "containers": [{"name": "c", "image": "busybox:1.37.0", "securityContext": {"allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}}}]}' "$1" "$2"
+}
+
+# expect_admission_denial <message> <kind> <namespace> <service account> fails
+# unless the API server rejects the workload with the message.
+expect_admission_denial() {
+    local out
+    case "$2" in
+        Pod) out="{\"apiVersion\": \"v1\", \"kind\": \"Pod\", \"metadata\": {\"name\": \"e2e\", \"namespace\": \"$3\"}, \"spec\": $(pod_spec "$4" Never)}" ;;
+        Job) out="{\"apiVersion\": \"batch/v1\", \"kind\": \"Job\", \"metadata\": {\"name\": \"e2e\", \"namespace\": \"$3\"}, \"spec\": {\"template\": {\"spec\": $(pod_spec "$4" Never)}}}" ;;
+        Deployment) out="{\"apiVersion\": \"apps/v1\", \"kind\": \"Deployment\", \"metadata\": {\"name\": \"e2e\", \"namespace\": \"$3\"}, \"spec\": {\"selector\": {\"matchLabels\": {\"app\": \"e2e\"}}, \"template\": {\"metadata\": {\"labels\": {\"app\": \"e2e\"}}, \"spec\": $(pod_spec "$4" Always)}}}" ;;
+        *) fail "unsupported kind $2" ;;
+    esac
+    out="$(kubectl create --dry-run=server -f - <<<"${out}" 2>&1)" \
+        && fail "$2 in $3 was admitted with ServiceAccount $4"
+    grep -q "$1" <<<"${out}" || fail "$2 in $3 was rejected for another reason: ${out}"
+}
+
 # helm_revision <namespace> <release>
 helm_revision() {
     helm -n "$1" history "$2" -o json | jq -r 'max_by(.revision).revision'
@@ -208,6 +229,16 @@ for check in "create deployments -n backend" "create deployments -n default" "cr
         || fail "the frontend ServiceAccount can ${check}"
 done
 info "apps get a restricted managed namespace, an ExternalArtifact and admin rights in that namespace only"
+
+log "Checking that workloads cannot use the Flux ServiceAccounts"
+for ns in frontend spire-system; do
+    expect_admission_denial "cannot run under the 'flux' ServiceAccount" Pod "${ns}" flux
+done
+for kind in Pod Job Deployment; do
+    expect_admission_denial "is reserved for Deployment flux-system/kustomize-controller" "${kind}" "${FLUX_NS}" kustomize-controller
+done
+expect_admission_denial "is reserved for Deployment flux-system/flux-operator" Deployment "${FLUX_NS}" flux-operator
+info "pods cannot run as flux, and the Flux controller ServiceAccounts are reserved for their Deployments"
 
 log "Checking that the artifact servers reject plain HTTP"
 expect_plain_http_rejection "${FLUX_NS}" source-controller 9090 gitrepository/flux-system "${FLUX_NS}"

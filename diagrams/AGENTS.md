@@ -52,7 +52,7 @@ title, `aria-label`, `<desc>` and SVG body.
 
 Every colour in the SVG is a CSS variable, so one file renders both themes:
 `var(--paper)`, `var(--paper-2)`, `var(--ink)`, `var(--muted)`,
-`var(--soft)`, `var(--accent)`, `var(--link)`, and
+`var(--soft)`, `var(--accent)`, `var(--link)`, `var(--mtls)`, and
 `rgba(var(--ink-rgb), a)`, `rgba(var(--muted-rgb), a)`,
 `rgba(var(--accent-rgb), a)` for tints.
 
@@ -65,6 +65,7 @@ Every colour in the SVG is a CSS variable, so one file renders both themes:
 | soft | `#7a8399` | `#8e98ac` |
 | accent | `#eb6c36` | `#f08a59` |
 | link | `#2e5aa8` | `#6a95d8` |
+| mtls | `#7646c4` | `#b394ea` |
 
 Light tokens live on `:root`. Dark tokens apply under
 `:root:has(#theme:checked)` (a CSS-only checkbox toggle, top right, hidden
@@ -96,7 +97,8 @@ rect followed by the styled rect. Name and sublabel are centred.
 | Meaning | Stroke |
 |---|---|
 | HTTP or HTTPS outside the mesh | `var(--link)`, solid, `#arrow-link` marker |
-| SPIFFE mTLS, or install and reconcile in `terraform-bootstrap` | `var(--muted)`, solid, `#arrow` marker |
+| SPIFFE mTLS | `var(--mtls)`, solid, `#arrow-mtls` marker |
+| Install and reconcile in `terraform-bootstrap` | `var(--muted)`, solid, `#arrow` marker |
 | Kubernetes API, or hand-off to Flux in `terraform-bootstrap` | `var(--muted)`, `stroke-dasharray="4,3"` |
 
 - All strokes 1.2px. Straight lines when both ends share x or y; otherwise

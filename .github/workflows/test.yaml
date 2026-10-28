@@ -1,0 +1,35 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Flux CLI
+        uses: fluxcd/flux2/action@3fa784edd773d56630bb9f62645e08f70c2cff0a # v2.10.0
+        with:
+          plugins: schema
+      - name: Validate manifests
+        uses: fluxcd/flux-schema/actions/validate@4c71b2098ba84b738d811877463f5a2b2bfe443f # v0.17.0
+        with:
+          path: '.'
+          config: '.fluxschema.yml'
+      - name: Validate API versions
+        run: |
+          flux migrate -f . --yes
+          if [[ $(git diff --stat) != '' ]]; then
+            git --no-pager diff
+            echo 'deprecated API versions found, run flux migrate and commit changes'
+            exit 1
+          fi

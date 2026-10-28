@@ -5,7 +5,7 @@ variable "cluster_name" {
 }
 
 variable "git_ref" {
-  description = "Git ref Flux syncs from, e.g. refs/heads/main or refs/pull/1/merge."
+  description = "Git ref Flux syncs from, e.g. refs/heads/main or refs/tags/v1.0.0."
   type        = string
   default     = "refs/heads/main"
 }

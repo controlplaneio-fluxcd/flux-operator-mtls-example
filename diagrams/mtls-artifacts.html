@@ -18,6 +18,7 @@
       --accent:     #eb6c36;
       --accent-rgb: 235,108,54;
       --link:       #2e5aa8;
+      --mtls:       #7646c4;
       --color-paper:  var(--paper);
       --color-ink:    var(--ink);
       --color-muted:  var(--muted);
@@ -39,6 +40,7 @@
       --accent:     #f08a59;
       --accent-rgb: 240,138,89;
       --link:       #6a95d8;
+      --mtls:       #b394ea;
     }
 
     body {
@@ -119,8 +121,8 @@
     <svg viewBox="16 16 952 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Artifacts and events over SPIFFE mTLS" aria-describedby="mtls-artifacts-desc">
       <desc id="mtls-artifacts-desc">source-controller pulls the Git repository and the Helm charts from the OCI registry over HTTPS and serves the artifacts over SPIFFE mTLS to source-watcher, kustomize-controller, helm-controller and flux-operator for the Web UI downloads. source-watcher serves the app artifacts to kustomize-controller. The controllers and flux-operator send events to notification-controller, which accepts only the Flux SPIFFE IDs.</desc>
       <defs>
-        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--muted)"/></marker>
         <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--link)"/></marker>
+        <marker id="arrow-mtls" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--mtls)"/></marker>
       </defs>
 
       <rect x="16" y="16" width="952" height="440" fill="var(--paper)"/>
@@ -131,23 +133,23 @@
       <!-- OCI registry -> source-controller -->
       <path d="M184,256 H280" fill="none" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
       <!-- source-controller -> source-watcher -->
-      <path d="M432,208 H472 Q480,208 480,200 V72 Q480,64 488,64 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M432,208 H472 Q480,208 480,200 V72 Q480,64 488,64 H528" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- source-watcher -> notification-controller -->
-      <path d="M680,64 H720 Q728,64 728,72 V200 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M680,64 H720 Q728,64 728,72 V200 Q728,208 736,208 H776" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- source-controller -> kustomize-controller -->
-      <path d="M432,208 H472 Q480,208 480,200 V168 Q480,160 488,160 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M432,208 H472 Q480,208 480,200 V168 Q480,160 488,160 H528" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- kustomize-controller -> notification-controller -->
-      <path d="M680,160 H720 Q728,160 728,168 V200 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M680,160 H720 Q728,160 728,168 V200 Q728,208 736,208 H776" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- source-controller -> helm-controller -->
-      <path d="M432,208 H472 Q480,208 480,216 V248 Q480,256 488,256 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M432,208 H472 Q480,208 480,216 V248 Q480,256 488,256 H528" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- helm-controller -> notification-controller -->
-      <path d="M680,256 H720 Q728,256 728,248 V216 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M680,256 H720 Q728,256 728,248 V216 Q728,208 736,208 H776" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- source-controller -> flux-operator -->
-      <path d="M432,208 H472 Q480,208 480,216 V344 Q480,352 488,352 H528" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M432,208 H472 Q480,208 480,216 V344 Q480,352 488,352 H528" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- flux-operator -> notification-controller -->
-      <path d="M680,352 H720 Q728,352 728,344 V216 Q728,208 736,208 H776" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M680,352 H720 Q728,352 728,344 V216 Q728,208 736,208 H776" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- source-watcher -> kustomize-controller -->
-      <path d="M604,96 V128" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M604,96 V128" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
 
       <!-- ===== Arrow labels ===== -->
       <rect x="416" y="103" width="60" height="12" rx="2" fill="var(--paper)"/>
@@ -204,7 +206,7 @@
       <line x1="32" y1="416" x2="952" y2="416" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
       <line x1="32" y1="437" x2="60" y2="437" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
       <text x="68" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">HTTPS</text>
-      <line x1="118" y1="437" x2="146" y2="437" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <line x1="118" y1="437" x2="146" y2="437" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <text x="154" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">SPIFFE mTLS</text>
       <rect x="225" y="432" width="14" height="10" rx="2" fill="var(--paper-2)" stroke="var(--ink)" stroke-width="1"/>
       <text x="245" y="440" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Flux component</text>

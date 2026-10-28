@@ -18,6 +18,7 @@
       --accent:     #eb6c36;
       --accent-rgb: 235,108,54;
       --link:       #2e5aa8;
+      --mtls:       #7646c4;
       --color-paper:  var(--paper);
       --color-ink:    var(--ink);
       --color-muted:  var(--muted);
@@ -39,6 +40,7 @@
       --accent:     #f08a59;
       --accent-rgb: 240,138,89;
       --link:       #6a95d8;
+      --mtls:       #b394ea;
     }
 
     body {
@@ -121,6 +123,7 @@
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--muted)"/></marker>
         <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--link)"/></marker>
+        <marker id="arrow-mtls" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--mtls)"/></marker>
       </defs>
 
       <rect x="16" y="16" width="952" height="344" fill="var(--paper)"/>
@@ -131,17 +134,17 @@
       <!-- Browser -> Envoy -->
       <path d="M184,256 H356 Q364,256 364,248 V192" fill="none" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
       <!-- Envoy -> Receiver -->
-      <path d="M440,144 H484 Q492,144 492,136 V72 Q492,64 500,64 H544" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M440,144 H484 Q492,144 492,136 V72 Q492,64 500,64 H544" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- Envoy -> Web UI -->
-      <path d="M440,160 H544" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M440,160 H544" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- Envoy -> frontend -->
-      <path d="M440,176 H484 Q492,176 492,184 V248 Q492,256 500,256 H544" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M440,176 H484 Q492,176 492,184 V248 Q492,256 500,256 H544" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- frontend -> backend -->
-      <path d="M696,256 H800" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M696,256 H800" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <!-- Receiver -> source-controller -->
       <path d="M696,64 H800" fill="none" stroke="var(--muted)" stroke-dasharray="4,3" marker-end="url(#arrow)" stroke-width="1.2"/>
       <!-- Web UI -> source-controller -->
-      <path d="M696,160 H868 Q876,160 876,152 V96" fill="none" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <path d="M696,160 H868 Q876,160 876,152 V96" fill="none" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
 
       <!-- ===== Arrow labels ===== -->
       <rect x="718" y="44" width="60" height="12" rx="2" fill="var(--paper)"/>
@@ -195,7 +198,7 @@
       <line x1="32" y1="320" x2="952" y2="320" stroke="rgba(var(--ink-rgb),0.10)" stroke-width="0.8"/>
       <line x1="32" y1="341" x2="60" y2="341" stroke="var(--link)" marker-end="url(#arrow-link)" stroke-width="1.2"/>
       <text x="68" y="344" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">HTTP</text>
-      <line x1="114" y1="341" x2="142" y2="341" stroke="var(--muted)" marker-end="url(#arrow)" stroke-width="1.2"/>
+      <line x1="114" y1="341" x2="142" y2="341" stroke="var(--mtls)" marker-end="url(#arrow-mtls)" stroke-width="1.2"/>
       <text x="150" y="344" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">SPIFFE mTLS</text>
       <line x1="221" y1="341" x2="249" y2="341" stroke="var(--muted)" stroke-dasharray="4,3" marker-end="url(#arrow)" stroke-width="1.2"/>
       <text x="257" y="344" fill="var(--muted)" font-size="8.5" font-family="'Geist', sans-serif">Kubernetes API</text>

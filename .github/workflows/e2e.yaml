@@ -14,11 +14,16 @@ permissions:
 
 jobs:
   kind:
+    # Flux can't fetch fork branches.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Same commit Flux syncs.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
@@ -30,7 +35,6 @@ jobs:
           version: v4.3.1
       - name: Run e2e
         env:
-          # Flux syncs the cluster from the commit under test:
-          # refs/pull/<n>/merge on PRs, refs/heads/main otherwise.
-          GIT_REF: ${{ github.ref }}
+          # Flux can't fetch refs/pull/<n>/merge.
+          GIT_REF: ${{ github.event_name == 'pull_request' && format('refs/heads/{0}', github.head_ref) || github.ref }}
         run: ./scripts/e2e.sh

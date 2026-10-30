@@ -9,6 +9,7 @@ renders:
 | Bootstrap with Terraform | `terraform-bootstrap.html` | `terraform-bootstrap.png`, `terraform-bootstrap-dark.png` | 1128x578 |
 | Ingress over SPIFFE mTLS | `mtls-ingress.html` | `mtls-ingress.png`, `mtls-ingress-dark.png` | 1128x469 |
 | Artifacts and events over SPIFFE mTLS | `mtls-artifacts.html` | `mtls-artifacts.png`, `mtls-artifacts-dark.png` | 1128x578 |
+| Apps and tenancy | `apps-tenancy.html` | `apps-tenancy.png`, `apps-tenancy-dark.png` | 1128x578 |
 
 The HTML is the source of truth. Edit it, then regenerate both PNGs. The
 README embeds the PNGs with `<picture>` and `prefers-color-scheme`, so both

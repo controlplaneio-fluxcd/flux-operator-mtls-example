@@ -80,6 +80,11 @@ See the [ingress gotchas](#ingress).
 
 ### Apps and tenancy
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/apps-tenancy-dark.png">
+  <img alt="source-watcher creates a restricted namespace per app and publishes its artifact there; flux-operator creates the flux ServiceAccount with namespace admin rights and a Kustomization; kustomize-controller fetches the artifact over SPIFFE mTLS and applies it as flux; admission policies stop pods from running as flux" src="diagrams/apps-tenancy.png">
+</picture>
+
 - An [ArtifactGenerator](https://fluxoperator.dev/docs/crd/artifactgenerator/)
   splits `apps/` into one ExternalArtifact per app, published by source-watcher
   into a namespace it creates with the `restricted` Pod Security Standard
